@@ -31,6 +31,8 @@
                 HorizontalOptions="Center" />
             <Entry x:Name="EmailEntry" Placeholder="Email" />
             <Entry x:Name="PasswordEntry" Placeholder="Password" IsPassword="True" />
+            <Entry x:Name="NicknameEntry" Placeholder="Användarnamn (valfritt)" />
+
 
             <Button Text="Register" Clicked="OnRegisterClicked" />
             <Button Text="Login" Clicked="OnLoginClicked" />

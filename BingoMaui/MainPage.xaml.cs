@@ -29,10 +29,11 @@ namespace BingoMaui
         {
             var email = EmailEntry.Text;
             var password = PasswordEntry.Text;
+            var nickname = NicknameEntry.Text; // Kan vara null
 
             // Kalla på vår FirebaseAuthService
             var authService = new FirebaseAuthService();
-            var result = await authService.RegisterUserAsync(email, password);
+            var result = await authService.RegisterUserAsync(email, password, nickname);
 
             if (!result.StartsWith("Error"))
             {

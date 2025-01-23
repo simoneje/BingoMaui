@@ -443,33 +443,30 @@ namespace BingoMaui.Services
 
             return challenges;
         }
-        //Metod för att hämta alla registrerade användare från firebaseDB
-        /*public async Task<List<PlayerModel>> GetRegisteredUsersAsync()
+        public async Task SetUserAsync(string userId, string email, string nickname)
         {
-            var users = new List<PlayerModel>();
+            var userRef = _firestoreDb.Collection("users").Document(userId);
 
-            try
+            await userRef.SetAsync(new
             {
-                // Hämta alla registrerade användare
-                var userList = await _authProvider.GetUserListAsync(); // Kräver Firebase Admin SDK (eller implementera detta via databasen)
+                Email = email,
+                Nickname = nickname,
+                UserId = userId
+            });
+        }
 
-                foreach (var user in userList.Users)
-                {
-                    users.Add(new PlayerModel
-                    {
-                        UserId = user.LocalId,
-                        Email = user.Email,
-                        IsInvited = false
-                    });
-                }
-            }
-            catch (Exception ex)
+        public async Task<string> GetUserNicknameAsync(string userId)
+        {
+            var userRef = _firestoreDb.Collection("users").Document(userId);
+            var snapshot = await userRef.GetSnapshotAsync();
+
+            if (snapshot.Exists && snapshot.ContainsField("Nickname"))
             {
-                Console.WriteLine($"Error fetching users: {ex.Message}");
+                return snapshot.GetValue<string>("Nickname");
             }
 
-            return users;
-        }*/
+            return userId; // Fallback till UserId om Nickname inte finns
+        }
 
     }
 }

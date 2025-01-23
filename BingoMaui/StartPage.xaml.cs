@@ -1,3 +1,4 @@
+using BingoMaui.Services;
 namespace BingoMaui;
 
 public partial class StartPage : ContentPage

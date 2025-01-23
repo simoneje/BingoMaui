@@ -13,20 +13,33 @@ namespace BingoMaui.Services
     public class FirebaseAuthService
     {
         private readonly FirebaseAuthProvider _authProvider;
+        private readonly FirestoreService _firestoreService;
 
         public FirebaseAuthService()
         {
             _authProvider = new FirebaseAuthProvider(new FirebaseConfig("AIzaSyCuGa8fDtOtjPUc8wQV0kJ1YFi21AY3nr8"));
+            _firestoreService = new FirestoreService();
         }
 
         // Metod för att skapa en ny användare (registrera sig)
-        public async Task<string> RegisterUserAsync(string email, string password)
+        public async Task<string> RegisterUserAsync(string email, string password, string nickname = null)
         {
             try
             {
+                // Skapa användaren i Firebase Authentication
                 var auth = await _authProvider.CreateUserWithEmailAndPasswordAsync(email, password);
-                // auth.User ger dig information om den skapade användaren
-                return auth.User.LocalId; // Returnerar ett unikt ID för användaren
+                var userId = auth.User.LocalId;
+
+                // Använd e-post som default nickname om inget anges
+                if (string.IsNullOrEmpty(nickname))
+                {
+                    nickname = email.Split('@')[0]; // Ta bort domän från e-post
+                }
+
+                // Skapa användarens Firestore-dokument
+                await _firestoreService.SetUserAsync(userId, email, nickname);
+
+                return userId; // Returnera användarens ID
             }
             catch (Exception ex)
             {
@@ -41,9 +54,16 @@ namespace BingoMaui.Services
             try
             {
                 var auth = await _authProvider.SignInWithEmailAndPasswordAsync(email, password);
-                // auth.User innehåller information om inloggad användare
-                Preferences.Set("UserId", auth.User.LocalId);
-                return auth.User.LocalId;
+                var userId = auth.User.LocalId;
+
+                // Hämta användarens nickname från Firestore
+                var nickname = await _firestoreService.GetUserNicknameAsync(userId);
+
+                // Spara UserId och Nickname lokalt
+                Preferences.Set("UserId", userId);
+                Preferences.Set("Nickname", nickname);
+
+                return userId;
             }
             catch (Exception ex)
             {
@@ -52,4 +72,3 @@ namespace BingoMaui.Services
         }
     }
 }
-
