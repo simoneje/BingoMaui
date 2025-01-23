@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BingoMaui.CreateGame"
+             Title="CreateGame">
+    <ScrollView>
+        <StackLayout Padding="20" Spacing="15">
+            <!-- Namn på spelet -->
+            <Entry x:Name="GameNameEntry" Placeholder="Namn på spelet" />
+
+            <!-- Startdatum -->
+            <Label Text="Startdatum" FontSize="18" />
+            <DatePicker x:Name="StartDatePicker" />
+
+            <!-- Slutdatum -->
+            <Label Text="Slutdatum" FontSize="18" />
+            <DatePicker x:Name="EndDatePicker" />
+
+            <!-- Lista över spelare -->
+            <Label Text="Bjud in spelare" FontSize="18" />
+            <CollectionView x:Name="PlayerList" SelectionMode="Multiple">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <StackLayout Orientation="Horizontal" Spacing="10">
+                            <Label Text="{Binding Email}" FontSize="16" VerticalOptions="Center" />
+                            <Switch IsToggled="{Binding IsInvited}" VerticalOptions="Center" />
+                        </StackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- Skapa Bingo-knapp -->
+            <Button Text="Skapa Bingo" Clicked="OnCreateGameClicked" />
+        </StackLayout>
+    </ScrollView>
+</ContentPage>

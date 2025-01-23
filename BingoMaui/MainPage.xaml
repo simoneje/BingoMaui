@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BingoMaui.MainPage">
+
+    <ScrollView>
+        <VerticalStackLayout
+            Padding="30,0"
+            Spacing="25">
+            <Image
+                Source="dotnet_bot.png"
+                HeightRequest="185"
+                Aspect="AspectFit"
+                SemanticProperties.Description="dot net bot in a race car number eight" />
+
+            <Label
+                Text="Bingo!"
+                Style="{StaticResource Headline}"
+                SemanticProperties.HeadingLevel="Level1" />
+
+            <Label
+                Text="Klicka här för att välja bingo"
+                Style="{StaticResource SubHeadline}"
+                SemanticProperties.HeadingLevel="Level2"
+                SemanticProperties.Description="Welcome to dot net Multi platform App U I" />
+
+            <Button
+                Text="Test Firestore Connection"
+                Clicked="OnTestFirestoreClicked"
+                VerticalOptions="Center"
+                HorizontalOptions="Center" />
+            <Entry x:Name="EmailEntry" Placeholder="Email" />
+            <Entry x:Name="PasswordEntry" Placeholder="Password" IsPassword="True" />
+
+            <Button Text="Register" Clicked="OnRegisterClicked" />
+            <Button Text="Login" Clicked="OnLoginClicked" />
+            <Button Text="Mina Spel"
+                HorizontalOptions="Center"
+                VerticalOptions="Center"
+                Clicked="OnMyGamesClicked" />
+
+        </VerticalStackLayout>
+        
+    </ScrollView>
+
+</ContentPage>

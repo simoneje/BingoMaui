@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "736011182597",
+    "project_id": "bingomaui-28990",
+    "storage_bucket": "bingomaui-28990.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:736011182597:android:a07f1051e0d2f1fc5ff26c",
+        "android_client_info": {
+          "package_name": "XBingo.XBingo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC09FvvXSWnNXoCEadunnR8n3DSo7qd0Pw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

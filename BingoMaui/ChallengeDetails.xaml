@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BingoMaui.ChallengeDetails"
+             Title="Utmaningsdetaljer">
+
+    <VerticalStackLayout Padding="10">
+        <!-- Titel -->
+        <Label x:Name="ChallengeTitleLabel"
+               FontSize="24"
+               FontAttributes="Bold"
+               HorizontalOptions="Center" />
+
+        <!-- Beskrivning -->
+        <Label x:Name="ChallengeDescriptionLabel"
+               FontSize="16"
+               HorizontalOptions="Center"
+               TextColor="Gray"
+               Margin="0,10,0,10" />
+
+        <!-- Lista över spelare som har klarat -->
+        <Label Text="Spelare som klarat utmaningen:" FontSize="18" />
+        <CollectionView x:Name="CompletedPlayersList" HeightRequest="200">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Label Text="{Binding}" FontSize="16" />
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Knapp för att markera utmaningen som klarad -->
+        <Button Text="Markera som klarad"
+                BackgroundColor="Green"
+                TextColor="White"
+                Clicked="OnMarkAsCompletedClicked" />
+    </VerticalStackLayout>
+</ContentPage>
+

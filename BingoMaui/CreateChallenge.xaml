@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BingoMaui.CreateChallenge"
+             Title="Skapa egna utmaningar">
+    <StackLayout Padding="10">
+        <Entry x:Name="ChallengeEntry" Placeholder="Skriv din utmaning här" />
+        <Button Text="Lägg till utmaning" Clicked="OnAddChallengeClicked" />
+        <Label Text="Dina utmaningar:" FontSize="18" Margin="10,20,10,10" />
+        <CollectionView x:Name="ChallengesList">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <TextCell Text="{Binding Title}" />
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </StackLayout>
+</ContentPage>
