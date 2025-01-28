@@ -20,6 +20,11 @@ namespace BingoMaui.Services
             _authProvider = new FirebaseAuthProvider(new FirebaseConfig("AIzaSyCuGa8fDtOtjPUc8wQV0kJ1YFi21AY3nr8"));
             _firestoreService = new FirestoreService();
         }
+        public string GetLoggedInNickname()
+        {
+            return Preferences.Get("Nickname", "Anonym Användare"); // Default till "Anonym Användare" om inget finns
+        }
+
 
         // Metod för att skapa en ny användare (registrera sig)
         public async Task<string> RegisterUserAsync(string email, string password, string nickname = null)
@@ -58,10 +63,13 @@ namespace BingoMaui.Services
 
                 // Hämta användarens nickname från Firestore
                 var nickname = await _firestoreService.GetUserNicknameAsync(userId);
+                App.LoggedInNickname = GetLoggedInNickname();
+                App.LoggedInNickname = nickname;
 
                 // Spara UserId och Nickname lokalt
                 Preferences.Set("UserId", userId);
                 Preferences.Set("Nickname", nickname);
+                Console.WriteLine($"Nickname to save: {nickname}");
 
                 return userId;
             }

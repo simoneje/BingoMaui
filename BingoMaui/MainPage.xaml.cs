@@ -8,6 +8,7 @@ using Firebase.Auth;
 using BingoMaui.Services;
 
 
+
 namespace BingoMaui
 {
     public partial class MainPage : ContentPage
@@ -48,11 +49,13 @@ namespace BingoMaui
         {
             var email = EmailEntry.Text;
             var password = PasswordEntry.Text;
+            
 
             try
             {
                 // Anropa FirebaseAuthService för att logga in användaren
                 var authService = new FirebaseAuthService();
+                var LoggedInNickname = authService.GetLoggedInNickname();
                 var result = await authService.LoginUserAsync(email, password);
 
                 if (!result.StartsWith("Error"))

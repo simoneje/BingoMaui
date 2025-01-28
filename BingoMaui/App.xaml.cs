@@ -1,12 +1,17 @@
-﻿namespace BingoMaui
+﻿using BingoMaui.Services;
+namespace BingoMaui
 {
     public partial class App : Application
     {
+        public static string LoggedInNickname { get; set; }
         public App()
         {
             InitializeComponent();
             CopyServiceAccountKeyAsync();
-
+            // Ladda nickname vid app-start
+            var authService = new FirebaseAuthService();
+            LoggedInNickname = authService.GetLoggedInNickname();
+            Console.WriteLine(LoggedInNickname);
 
             // Kontrollera inloggningsstatus
             bool isLoggedIn = Preferences.Get("IsLoggedIn", false);
@@ -45,6 +50,10 @@
             }
 
             Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", destPath);
+        }
+        public static void ClearLoggedInNickname()
+        {
+            LoggedInNickname = string.Empty;
         }
     }
 }

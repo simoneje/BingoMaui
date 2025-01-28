@@ -6,7 +6,15 @@ public partial class StartPage : ContentPage
 	public StartPage()
 	{
 		InitializeComponent();
+
 	}
+    protected override void OnAppearing()
+    {
+        
+
+        // Använd global variabel för att visa nickname
+        WelcomeLabel.Text = $"Välkommen, {App.LoggedInNickname}!";
+    }
 
     private async void OnNavigateButtonClickedCreate(object sender, EventArgs e)
     {
@@ -20,6 +28,8 @@ public partial class StartPage : ContentPage
     {
         // Rensa inloggningsstatus
         Preferences.Clear();
+        App.ClearLoggedInNickname(); // Använd den nya metoden
+
 
         // Navigera användaren till LoginPage
         Application.Current.MainPage = new NavigationPage(new MainPage());

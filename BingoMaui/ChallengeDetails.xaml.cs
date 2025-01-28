@@ -20,13 +20,14 @@ namespace BingoMaui
             _challenge = challenge;
             _currentUserId = Preferences.Get("UserId", string.Empty); // Hämta inloggad användares ID
             _gameId = gameId;
-            // Visa data
             
+            // Ladda spelare som klarat utmaningen
+            LoadCompletedPlayers();
+            // Visa data
             ChallengeTitleLabel.Text = challenge.Title;
             ChallengeDescriptionLabel.Text = challenge.Description;
 
-            // Ladda spelare som klarat utmaningen
-            LoadCompletedPlayers();
+            
         }
         private async void LoadCompletedPlayers()
         {
@@ -37,8 +38,18 @@ namespace BingoMaui
 
                 if (updatedChallenge?.CompletedBy != null && updatedChallenge.CompletedBy.Count > 0)
                 {
+                    var completedPlayers = new List<string>();
+
+                    // Hämta nicknames för varje spelare som har klarat utmaningen
+                    foreach (var userId in updatedChallenge.CompletedBy)
+                    {
+                        var nickname = await _firestoreService.GetUserNicknameAsync(userId);
+                        completedPlayers.Add(nickname);
+                    }
+
+                    // Uppdatera UI med nicknames
                     _challenge.CompletedBy = updatedChallenge.CompletedBy; // Uppdatera lokalt objekt
-                    CompletedPlayersList.ItemsSource = _challenge.CompletedBy; // Visa listan i UI
+                    CompletedPlayersList.ItemsSource = completedPlayers; // Visa nicknames i UI
                 }
                 else
                 {

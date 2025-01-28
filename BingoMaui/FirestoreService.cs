@@ -431,7 +431,7 @@ namespace BingoMaui.Services
         {
             var challenges = new List<Challenge>();
             var querySnapshot = await _firestoreDb
-                .Collection("Challenges")
+                .Collection("BingoGames")
                 .WhereEqualTo("GameId", gameId)
                 .GetSnapshotAsync();
 
