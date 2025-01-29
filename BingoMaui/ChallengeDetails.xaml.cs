@@ -33,14 +33,26 @@ namespace BingoMaui
         {
             try
             {
-                // Hämta det uppdaterade Challenge-objektet från Firestore
+                var cachedPlayers = new List<string>();
+
+                // Kontrollera om vi har lokalt cachade spelare för denna challenge
+                if (App.CompletedChallengesCache.ContainsKey(_gameId) && App.CompletedChallengesCache[_gameId].ContainsKey(_challenge.Title))
+                {
+                    cachedPlayers = App.CompletedChallengesCache[_gameId][_challenge.Title];
+
+                    // Uppdatera UI direkt med den cachade datan
+                    CompletedPlayersList.ItemsSource = cachedPlayers;
+                    Console.WriteLine($"Loaded completed players from cache for challenge: {_challenge.Title}");
+                    return; // Avsluta metoden här om vi har cached data
+                }
+
+                // Om inga spelare finns i cachen, hämta från Firestore
                 var updatedChallenge = await _firestoreService.GetChallengeByTitleAsync(_gameId, _challenge.Title);
 
                 if (updatedChallenge?.CompletedBy != null && updatedChallenge.CompletedBy.Count > 0)
                 {
                     var completedPlayers = new List<string>();
 
-                    // Hämta nicknames för varje spelare som har klarat utmaningen
                     foreach (var userId in updatedChallenge.CompletedBy)
                     {
                         var nickname = await _firestoreService.GetUserNicknameAsync(userId);
@@ -48,8 +60,22 @@ namespace BingoMaui
                     }
 
                     // Uppdatera UI med nicknames
-                    _challenge.CompletedBy = updatedChallenge.CompletedBy; // Uppdatera lokalt objekt
-                    CompletedPlayersList.ItemsSource = completedPlayers; // Visa nicknames i UI
+                    CompletedPlayersList.ItemsSource = completedPlayers;
+
+                    // Uppdatera lokal cache med de hämtade spelarna
+                    if (!App.CompletedChallengesCache.ContainsKey(_gameId))
+                    {
+                        App.CompletedChallengesCache[_gameId] = new Dictionary<string, List<string>>();
+                    }
+
+                    if (!App.CompletedChallengesCache[_gameId].ContainsKey(_challenge.Title))
+                    {
+                        App.CompletedChallengesCache[_gameId][_challenge.Title] = new List<string>();
+                    }
+
+                    App.CompletedChallengesCache[_gameId][_challenge.Title] = completedPlayers;
+
+                    Console.WriteLine($"Fetched and cached completed players for challenge: {_challenge.Title}");
                 }
                 else
                 {
@@ -62,6 +88,7 @@ namespace BingoMaui
                 await DisplayAlert("Fel", "Kunde inte hämta spelarinformation.", "OK");
             }
         }
+
         private async void OnMarkAsCompletedClicked(object sender, EventArgs e)
         {
             if (_challenge.CompletedBy != null && _challenge.CompletedBy.Contains(_currentUserId))

@@ -196,7 +196,7 @@ namespace BingoMaui.Services
         {
             try
             {
-                // Hämta spelet med hjälp av GetGameByIdAsync
+                // Hämta spelet från Firestore
                 var game = await GetGameByIdAsync(gameId);
 
                 if (game == null || string.IsNullOrEmpty(game.DocumentId))
@@ -205,7 +205,6 @@ namespace BingoMaui.Services
                     return;
                 }
 
-                // Hämta referens till rätt dokument i "BingoGames" med hjälp av DocumentId
                 var gameRef = _firestoreDb.Collection("BingoGames").Document(game.DocumentId);
                 var gameSnapshot = await gameRef.GetSnapshotAsync();
 
@@ -214,106 +213,18 @@ namespace BingoMaui.Services
                     Console.WriteLine($"Game with DocumentId {game.DocumentId} not found.");
                     return;
                 }
+
                 var gameData = gameSnapshot.ToDictionary();
-                var newGameData = new Object();
-                var numbers = gameData.Keys;
-
-                // Kontrollera om korten finns som en del av en lista
-                Console.WriteLine(gameData.Keys);
-                foreach (KeyValuePair<string, object> entry in gameData)
-                {
-                    Console.WriteLine($"Card key:'{entry.Key}' and Value: '{entry.Value}'");
-                    if(entry.Key == "Cards")
-                    {
-                        newGameData = entry.Value;
-                        if (newGameData is List<object> cardsList)
-                        {
-                            foreach (var cardObj in cardsList)
-                            {
-                                if (cardObj is Dictionary<string, object> cardDict)
-                                {
-                                    // Kontrollera om kortet innehåller rätt "Title"
-                                    var foundTitle = false;
-                                    foreach (var innerEntry in cardDict)
-                                    {
-                                        if (innerEntry.Key == "Title" && innerEntry.Value.ToString() == title) // Byt "desiredTitle" mot rätt titel
-                                        {
-                                            Console.WriteLine($"Found card with Title: {innerEntry.Value}");
-                                            foundTitle = true;
-                                            break; // Fortsätt med nästa steg
-                                        }
-                                    }
-
-                                    if (foundTitle)
-                                    {
-                                        // Leta efter eller uppdatera "PlayerProgress"
-                                        var playerProgressUpdated = false;
-
-                                        foreach (var innerEntry in cardDict)
-                                        {
-                                            if (innerEntry.Key == "PlayerProgress" && innerEntry.Value is Dictionary<string, object> playerProgressDict)
-                                            {
-                                                // Kontrollera om spelarens ID redan finns i "PlayerProgress"
-                                                if (!playerProgressDict.ContainsKey(playerId))
-                                                {
-                                                    playerProgressDict[playerId] = true; // Markera spelaren som klarat utmaningen
-                                                    Console.WriteLine($"Added PlayerId {playerId} to PlayerProgress.");
-                                                }
-
-                                                playerProgressUpdated = true;
-                                                break; // Avsluta när vi har hittat och uppdaterat PlayerProgress
-                                            }
-                                        }
-
-                                        // Om PlayerProgress inte existerar, skapa det
-                                        if (!playerProgressUpdated)
-                                        {
-                                            cardDict["PlayerProgress"] = new Dictionary<string, object>
-                                            {
-                                                { playerId, true }
-                                            };
-                                            Console.WriteLine($"Initialized PlayerProgress with PlayerId {playerId}.");
-                                        }
-
-                                        // Uppdatera databasen
-                                        try
-                                        {
-                                            await gameRef.UpdateAsync("Cards", cardsList);
-                                            Console.WriteLine("PlayerProgress successfully updated in Firebase.");
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            Console.WriteLine($"Error updating PlayerProgress in Firebase: {ex.Message}");
-                                        }
-
-                                        break; // Avsluta när vi har uppdaterat rätt kort
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("newGameData is not a List<object>");
-                        }
-
-                    }
-                }
-
-                //foreach (entry2 in newGameData)
-                //{
-                //    Console.WriteLine($"Card key:'{entry2.Key}' and Value: '{entry2.Value}'");
-                //}
-
-                var cards = newGameData as List<Dictionary<string, object>>;
-                if (cards == null)
+                if (!gameData.TryGetValue("Cards", out var cardsObject) || cardsObject is not List<object> cardsList)
                 {
                     Console.WriteLine("Cards data is invalid.");
                     return;
                 }
 
-                // Hitta det specifika kortet baserat på "Title"
-                var targetCard = cards.FirstOrDefault(card =>
-                    card.ContainsKey("Title") && card["Title"].ToString() == title);
+                // Hitta kortet med rätt titel
+                var targetCard = cardsList
+                    .OfType<Dictionary<string, object>>()
+                    .FirstOrDefault(card => card.TryGetValue("Title", out var cardTitle) && cardTitle.ToString() == title);
 
                 if (targetCard == null)
                 {
@@ -321,27 +232,46 @@ namespace BingoMaui.Services
                     return;
                 }
 
-                // Lägg till spelarens progress om det inte redan finns
-                if (!targetCard.ContainsKey("PlayerProgress"))
+                // Hämta eller skapa PlayerProgress
+                if (!targetCard.TryGetValue("PlayerProgress", out var playerProgressObject) || playerProgressObject is not Dictionary<string, object> playerProgressDict)
                 {
-                    targetCard["PlayerProgress"] = new List<string>();
+                    playerProgressDict = new Dictionary<string, object>();
+                    targetCard["PlayerProgress"] = playerProgressDict;
                 }
 
-                var progress = targetCard["PlayerProgress"] as List<string>;
-                if (progress != null && !progress.Contains(playerId))
+                // Uppdatera PlayerProgress i Firestore
+                if (!playerProgressDict.ContainsKey(playerId))
                 {
-                    progress.Add(playerId);
+                    playerProgressDict[playerId] = true; // Lägg till spelarens ID som klarad
+                    await gameRef.UpdateAsync("Cards", cardsList);
                     Console.WriteLine($"Player {playerId} marked card with Title '{title}' as completed.");
                 }
 
-                // Uppdatera dokumentet i Firestore
-                await gameRef.UpdateAsync("Cards", cards);
+                // Uppdatera lokal cache
+                if (!App.CompletedChallengesCache.ContainsKey(gameId))
+                {
+                    App.CompletedChallengesCache[gameId] = new Dictionary<string, List<string>>();
+                }
+
+                if (!App.CompletedChallengesCache[gameId].ContainsKey(title))
+                {
+                    App.CompletedChallengesCache[gameId][title] = new List<string>();
+                }
+
+                var nickname = await GetUserNicknameAsync(playerId);
+                if (!App.CompletedChallengesCache[gameId][title].Contains(nickname))
+                {
+                    App.CompletedChallengesCache[gameId][title].Add(nickname);
+                    Console.WriteLine($"Player {nickname} added to cache for challenge '{title}'.");
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error updating challenge progress: {ex.Message}");
             }
         }
+
+
         public async Task<bool> IsChallengeCompletedAsync(string cardId, string playerId)
         {
             var cardRef = _firestoreDb.Collection("BingoCards").Document(cardId);

@@ -4,6 +4,8 @@ namespace BingoMaui
     public partial class App : Application
     {
         public static string LoggedInNickname { get; set; }
+        public static Dictionary<string, Dictionary<string, List<string>>> CompletedChallengesCache { get; private set; } =
+            new Dictionary<string, Dictionary<string, List<string>>>();
         public App()
         {
             InitializeComponent();
