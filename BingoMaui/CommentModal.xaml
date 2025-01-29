@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BingoMaui.CommentModal"
+             Title="CommentModal">
+    <!-- Rotlayout -->
+    <StackLayout Padding="10" Spacing="10">
+
+        <!-- Titel -->
+        <Label Text="Kommentarer"
+               FontAttributes="Bold"
+               FontSize="24"
+               HorizontalOptions="Center" />
+
+        <!-- RefreshView omsluter kommentarslistan -->
+        <RefreshView x:Name="CommentsRefreshView" Command="{Binding RefreshCommand}">
+            <ListView x:Name="CommentsListView" HasUnevenRows="True">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <ViewCell>
+                            <StackLayout Padding="5">
+                                <Label Text="{Binding Nickname}" FontAttributes="Bold" />
+                                <Label Text="{Binding Message}" />
+                                <Label Text="{Binding FormattedTime}"
+                                       FontSize="12"
+                                       TextColor="Gray" />
+                            </StackLayout>
+                        </ViewCell>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </RefreshView>
+
+        <!-- Inmatningsfält för ny kommentar -->
+        <StackLayout Orientation="Horizontal" Spacing="10" Padding="10">
+            <Entry x:Name="CommentEntry"
+                   Placeholder="Skriv en kommentar..."
+                   HorizontalOptions="FillAndExpand" />
+            <Button Text="Skicka"
+                    Clicked="OnPostCommentClicked"
+                    BackgroundColor="Purple"
+                    TextColor="White" />
+        </StackLayout>
+
+        <!-- Stäng modal -->
+        <Button Text="Stäng"
+                Clicked="OnCloseModalClicked"
+                BackgroundColor="Gray"
+                TextColor="White"
+                VerticalOptions="End" />
+    </StackLayout>
+</ContentPage>

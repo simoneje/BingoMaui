@@ -270,7 +270,55 @@ namespace BingoMaui.Services
                 Console.WriteLine($"Error updating challenge progress: {ex.Message}");
             }
         }
+        public async Task<List<Comment>> GetCommentsAsync(string gameId)
+        {
+            var comments = new List<Comment>();
+            // Hämta spelet med hjälp av GetGameByIdAsync
+            var game = await GetGameByIdAsync(gameId);
+            var gameRef = _firestoreDb.Collection("BingoGames").Document(game.DocumentId);
+            var querySnapshot = await gameRef.Collection("Comments")
+                                             .OrderBy("Timestamp")
+                                             .GetSnapshotAsync();
 
+            foreach (var doc in querySnapshot.Documents)
+            {
+                var comment = doc.ConvertTo<Comment>();
+                comments.Add(comment);
+            }
+
+            return comments;
+        }
+        public async Task PostCommentAsync(string gameId, string userId, string message)
+        {
+            try
+            {
+                // Förbered kommentarsdatan
+                var comment = new Dictionary<string, object>
+        {
+            { "UserId", userId },
+            { "Nickname", App.LoggedInNickname },
+            { "Message", message },
+            { "Timestamp", Timestamp.GetCurrentTimestamp() }
+        };
+
+                // Hämta spelet med hjälp av GetGameByIdAsync
+                var game = await GetGameByIdAsync(gameId);
+                if (game == null || string.IsNullOrEmpty(game.DocumentId))
+                {
+                    Console.WriteLine($"Game with ID {gameId} not found or missing DocumentId.");
+                    return;
+                }
+
+                var gameRef = _firestoreDb.Collection("BingoGames").Document(game.DocumentId);
+                await gameRef.Collection("Comments").AddAsync(comment);
+
+                Console.WriteLine("Comment posted successfully!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error posting comment: {ex.Message}");
+            }
+        }
 
         public async Task<bool> IsChallengeCompletedAsync(string cardId, string playerId)
         {
@@ -357,22 +405,22 @@ namespace BingoMaui.Services
                 return null;
             }
         }
-        public async Task<List<Challenge>> GetChallengesForGameAsync(string gameId)
-        {
-            var challenges = new List<Challenge>();
-            var querySnapshot = await _firestoreDb
-                .Collection("BingoGames")
-                .WhereEqualTo("GameId", gameId)
-                .GetSnapshotAsync();
+        //public async Task<List<Challenge>> GetChallengesForGameAsync(string gameId)
+        //{
+        //    var challenges = new List<Challenge>();
+        //    var querySnapshot = await _firestoreDb
+        //        .Collection("BingoGames")
+        //        .WhereEqualTo("GameId", gameId)
+        //        .GetSnapshotAsync();
 
-            foreach (var document in querySnapshot.Documents)
-            {
-                var challenge = document.ConvertTo<Challenge>();
-                challenges.Add(challenge);
-            }
+        //    foreach (var document in querySnapshot.Documents)
+        //    {
+        //        var challenge = document.ConvertTo<Challenge>();
+        //        challenges.Add(challenge);
+        //    }
 
-            return challenges;
-        }
+        //    return challenges;
+        //}
         public async Task SetUserAsync(string userId, string email, string nickname)
         {
             var userRef = _firestoreDb.Collection("users").Document(userId);
@@ -396,6 +444,21 @@ namespace BingoMaui.Services
             }
 
             return userId; // Fallback till UserId om Nickname inte finns
+        }
+        public string FormatTimeAgo(DateTime timestamp)
+        {
+            var timeSpan = DateTime.Now - timestamp;
+
+            if (timeSpan.TotalSeconds < 60)
+                return $"{timeSpan.Seconds} sekund{(timeSpan.Seconds > 1 ? "er" : "")} sedan";
+            if (timeSpan.TotalMinutes < 60)
+                return $"{timeSpan.Minutes} minut{(timeSpan.Minutes > 1 ? "er" : "")} sedan";
+            if (timeSpan.TotalHours < 24)
+                return $"{timeSpan.Hours} timm{(timeSpan.Hours == 1 ? "e" : "ar")} sedan";
+            if (timeSpan.TotalDays < 30)
+                return $"{timeSpan.Days} dag{(timeSpan.Days > 1 ? "ar" : "")} sedan";
+
+            return timestamp.ToString("yyyy-MM-dd HH:mm");
         }
 
     }

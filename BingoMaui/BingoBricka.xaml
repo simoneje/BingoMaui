@@ -3,26 +3,39 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="BingoMaui.BingoBricka"
              Title="Bingobricka">
-    <Grid x:Name="BingoGrid"
-          RowSpacing="5"
-          ColumnSpacing="5"
-          Padding="10">
-        <!-- Definiera 5 rader och 5 kolumner -->
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
+    <Grid RowSpacing="10" ColumnSpacing="10" Padding="10">
+        <!-- Bingobrickan -->
+        <Grid x:Name="BingoGrid"
+              RowSpacing="5"
+              ColumnSpacing="5"
+              Padding="10"
+              Margin="0,0,0,50">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+        </Grid>
+
+        <!-- Knapp för att visa kommentarer -->
+        <Button x:Name="ToggleCommentsButton"
+                Text="Visa kommentarer"
+                CommandParameter="{Binding GameId}" 
+                Clicked="OnToggleCommentsClicked"
+                VerticalOptions="End"
+                HorizontalOptions="Center"
+                BackgroundColor="Gray"
+                TextColor="White"
+                Padding="10"
+                Margin="0,0,0,10"/>
     </Grid>
 </ContentPage>
-
-

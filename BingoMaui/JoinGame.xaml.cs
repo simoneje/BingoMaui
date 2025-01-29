@@ -16,45 +16,54 @@ public partial class JoinGame : ContentPage
 
     private async void OnJoinGameClicked(object sender, EventArgs e)
     {
-        var inviteCode = InviteCodeEntry.Text;
-
-        if (string.IsNullOrEmpty(inviteCode))
+        try
         {
-            await DisplayAlert("Error", "Du måste ange en invite-kod!", "OK");
-            return;
-        }
+            var inviteCode = InviteCodeEntry.Text;
 
-        // 1. Hämta spelet baserat på invite-koden
-        var game = await _firestoreService.GetGameByInviteCodeAsync(inviteCode);
-
-        if (game != null)
-        {
-            var userId = Preferences.Get("UserId", string.Empty); // Hämta inloggad användares ID
-            if (game.Players.Contains(userId))
+            if (string.IsNullOrEmpty(inviteCode))
             {
-                await DisplayAlert("Info", "Du är redan med i detta spel!", "OK");
+                await DisplayAlert("Error", "Du måste ange en invite-kod!", "OK");
                 return;
             }
 
-            // 2. Lägg till spelaren i spelets lista
-            await _firestoreService.AddPlayerToGameAsync(game.DocumentId, userId, game.GameName);
+            // 1. Hämta spelet baserat på invite-koden
+            var game = await _firestoreService.GetGameByInviteCodeAsync(inviteCode);
 
-            // 3. Hämta utmaningarna för spelet
-            var challenges = await _firestoreService.GetChallengesForGameAsync(game.GameId);
-
-            if (challenges == null || challenges.Count == 0)
+            if (game != null)
             {
-                await DisplayAlert("Error", "Inga utmaningar hittades för spelet.", "OK");
-                return;
-            }
+                var userId = Preferences.Get("UserId", string.Empty); // Hämta inloggad användares ID
+                if (game.Players.Contains(userId))
+                {
+                    await DisplayAlert("Info", "Du är redan med i detta spel!", "OK");
+                    return;
+                }
 
-            // 4. Navigera till BingoBricka med utmaningarna
-            await DisplayAlert("Success", $"Du har gått med i spelet: {game.GameName}!", "OK");
-            await Navigation.PushAsync(new BingoBricka(game.GameId, challenges));
+                // 2. Lägg till spelaren i spelets lista
+                await _firestoreService.AddPlayerToGameAsync(game.DocumentId, userId, game.GameName);
+
+                // 3. Hämta utmaningarna för spelet
+                var challenges = _firestoreService.ConvertBingoCardsToChallenges(game.Cards);
+                //var challenges = await _firestoreService.GetChallengesForGameAsync(game.GameId);
+
+                if (challenges == null || challenges.Count == 0)
+                {
+                    await DisplayAlert("Error", "Inga utmaningar hittades för spelet.", "OK");
+                    return;
+                }
+
+                // 4. Navigera till BingoBricka med utmaningarna
+                await DisplayAlert("Success", $"Du har gått med i spelet: {game.GameName}!", "OK");
+                await Navigation.PushAsync(new BingoBricka(game.GameId, challenges));
+            }
+            else
+            {
+                await DisplayAlert("Error", "Spelet med den koden hittades inte!", "OK");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            await DisplayAlert("Error", "Spelet med den koden hittades inte!", "OK");
+            Console.WriteLine($"Error in OnJoinGameClicked: {ex.Message}");
+            await DisplayAlert("Error", "Ett fel inträffade när du försökte gå med i spelet. Försök igen senare.", "OK");
         }
     }
     private List<Challenge> ConvertBingoCardsToChallenges(List<BingoCard> bingoCards)

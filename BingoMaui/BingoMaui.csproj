@@ -96,6 +96,9 @@
 	  <Compile Update="ChallengeDetails.xaml.cs">
 	    <DependentUpon>ChallengeDetails.xaml</DependentUpon>
 	  </Compile>
+	  <Compile Update="CommentModal.xaml.cs">
+	    <DependentUpon>CommentModal.xaml</DependentUpon>
+	  </Compile>
 	  <Compile Update="StartPage.xaml.cs">
 	    <DependentUpon>StartPage.xaml</DependentUpon>
 	  </Compile>
@@ -119,6 +122,10 @@
 	  </MauiXaml>
 	  <MauiXaml Update="ChallengeDetails.xaml">
 	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="CommentModal.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
 	  </MauiXaml>
 	  <MauiXaml Update="StartPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>

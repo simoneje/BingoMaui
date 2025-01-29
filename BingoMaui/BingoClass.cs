@@ -99,6 +99,26 @@ namespace BingoMaui
         public string Email { get; set; }
         public bool IsInvited { get; set; } // Om spelaren är inbjuden
     }
+    [FirestoreData]
+    public class Comment
+    {
+        [FirestoreProperty]
+        public string GameId { get; set; }
+
+        [FirestoreProperty]
+        public string Nickname { get; set; }
+
+        [FirestoreProperty]
+        public string Message { get; set; }
+
+        [FirestoreProperty]
+        public DateTime Timestamp { get; set; }
+
+        [FirestoreProperty]
+        public string FormattedTime { get; set; }
+
+        public Comment() { } // Parameterlös konstruktor krävs för Firestore
+    }
     public class User
     {
         public string Email { get; set; }
