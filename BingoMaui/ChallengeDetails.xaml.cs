@@ -53,9 +53,10 @@ namespace BingoMaui
                 {
                     var completedPlayers = new List<string>();
 
-                    foreach (var userId in updatedChallenge.CompletedBy)
+                    foreach (var completed in updatedChallenge.CompletedBy)
                     {
-                        var nickname = await _firestoreService.GetUserNicknameAsync(userId);
+                        // Anta att "completed" är av typen CompletedInfo och har en property PlayerId
+                        var nickname = await _firestoreService.GetUserNicknameAsync(completed.PlayerId);
                         completedPlayers.Add(nickname);
                     }
 
@@ -91,7 +92,7 @@ namespace BingoMaui
 
         private async void OnMarkAsCompletedClicked(object sender, EventArgs e)
         {
-            if (_challenge.CompletedBy != null && _challenge.CompletedBy.Contains(_currentUserId))
+            if (_challenge.CompletedBy != null && _challenge.CompletedBy.Any(c => c.PlayerId == _currentUserId))
             {
                 await DisplayAlert("Info", "Du har redan klarat denna utmaning!", "OK");
                 return;
@@ -110,9 +111,36 @@ namespace BingoMaui
             // Uppdatera UI
             if (_challenge.CompletedBy == null)
             {
-                _challenge.CompletedBy = new List<string>();
+                _challenge.CompletedBy = new List<CompletedInfo>();
             }
-            _challenge.CompletedBy.Add(_currentUserId);
+
+            if (!_challenge.CompletedBy.Any(c => c.PlayerId == _currentUserId))
+            {
+                // Här sätter du den aktuella användarens färg – ersätt med din egen logik för att hämta en anpassad färg.
+                string currentUserColor = "#FF5733"; // eller t.ex. "din_fargkod"
+                _challenge.CompletedBy.Add(new CompletedInfo
+                {
+                    PlayerId = _currentUserId,
+                    UserColor = currentUserColor
+                });
+            }
+
+            // Uppdatera App.CompletedChallengesCache
+            if (!App.CompletedChallengesCache.ContainsKey(_gameId))
+            {
+                App.CompletedChallengesCache[_gameId] = new Dictionary<string, List<string>>();
+            }
+            if (!App.CompletedChallengesCache[_gameId].ContainsKey(_challenge.Title))
+            {
+                App.CompletedChallengesCache[_gameId][_challenge.Title] = new List<string>();
+            }
+
+            // Hämta användarens nickname (du kan ha en egen logik för detta)
+            var nickname = await _firestoreService.GetUserNicknameAsync(_currentUserId);
+            if (!App.CompletedChallengesCache[_gameId][_challenge.Title].Contains(nickname))
+            {
+                App.CompletedChallengesCache[_gameId][_challenge.Title].Add(nickname);
+            }
             LoadCompletedPlayers();
 
             await DisplayAlert("Framgång!", "Utmaningen är markerad som klarad!", "OK");

@@ -7,6 +7,7 @@ namespace BingoMaui;
 public partial class JoinGame : ContentPage
 {
     private readonly FirestoreService _firestoreService;
+    private readonly string selectedColor = "";
 
     public JoinGame()
     {
@@ -39,7 +40,8 @@ public partial class JoinGame : ContentPage
                 }
 
                 // 2. Lägg till spelaren i spelets lista
-                await _firestoreService.AddPlayerToGameAsync(game.DocumentId, userId, game.GameName);
+                await _firestoreService.AddPlayerToGameAsync(game.DocumentId, userId, game.GameName, selectedColor);
+
 
                 // 3. Hämta utmaningarna för spelet
                 var challenges = _firestoreService.ConvertBingoCardsToChallenges(game.Cards);
@@ -74,7 +76,7 @@ public partial class JoinGame : ContentPage
             Title = card.Title,
             Description = card.Description,
             Category = card.Category,
-            CompletedBy = new List<string>() // Initiera en tom lista för completedBy
+            CompletedBy = new List<CompletedInfo>() // Initiera en tom lista för completedBy
         }).ToList();
     }
 }

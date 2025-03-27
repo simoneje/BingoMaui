@@ -1,5 +1,4 @@
-
-using Google.Cloud.Firestore;
+Ôªøusing Google.Cloud.Firestore;
 using BingoMaui.Services;
 using System;
 using System.Threading.Tasks;
@@ -9,7 +8,6 @@ public partial class CreateGame : ContentPage
 {
 
     private readonly FirestoreService _firestoreService;
-    private List<PlayerModel> _players;
     private List<Dictionary<string, object>> userChallenges = new();
     public CreateGame()
     {
@@ -30,11 +28,11 @@ public partial class CreateGame : ContentPage
     {
         return bingoCards.Select(card => new Challenge
         {
-            ChallengeId = card.CardId,
             Title = card.Title,
             Description = card.Description,
             Category = card.Category,
-            CompletedBy = new List<string>() // Initiera en tom lista
+            CompletedBy = new List<CompletedInfo>(), // Initiera en tom lista
+            ChallengeId = card.CardId,
         }).ToList();
     }
 
@@ -48,11 +46,11 @@ public partial class CreateGame : ContentPage
         var startDateUtc = StartDatePicker.Date.ToUniversalTime();
         var endDateUtc = EndDatePicker.Date.ToUniversalTime();
 
-        // H‰mta inloggad anv‰ndares ID frÂn Preferences
+        // H√§mta inloggad anv√§ndares ID fr√•n Preferences
         var hostId = Preferences.Get("UserId", string.Empty);
         if (string.IsNullOrEmpty(hostId))
         {
-            await DisplayAlert("Fel", "Anv‰ndar-ID kunde inte hittas. Logga in igen.", "OK");
+            await DisplayAlert("Fel", "Anv√§ndar-ID kunde inte hittas. Logga in igen.", "OK");
             return;
         }
 
@@ -64,18 +62,19 @@ public partial class CreateGame : ContentPage
             EndDate = endDateUtc,
             Status = "Active",
             Cards = combinedChallenges, // Kombinerade BingoCards
-            Players = new List<string> { hostId }, // L‰gg till HostId som fˆrsta spelare
-            InviteCode = GenerateInviteCode()
+            Players = new List<string> { hostId }, // L√§gg till HostId som f√∂rsta spelare
+            InviteCode = GenerateInviteCode(),
+            Leaderboard = new Dictionary<string, int> { { hostId, 0 } }
         };
 
         // Spara spelet i Firestore
         await _firestoreService.CreateBingoGameAsync(bingoGame);
 
-        // Navigera till BingoBricka och skicka med bÂde GameId och Challenges
+        // Navigera till BingoBricka och skicka med b√•de GameId och Challenges
         await Navigation.PushAsync(new BingoBricka(bingoGame.GameId, challenges));
 
-        // Bekr‰ftelse och navigering tillbaka
-        await DisplayAlert("FramgÂng!", $"Spelet {bingoGame.GameName} har skapats med Invite Code: {bingoGame.InviteCode}", "OK");
+        // Bekr√§ftelse och navigering tillbaka
+        await DisplayAlert("Framg√•ng!", $"Spelet {bingoGame.GameName} har skapats med Invite Code: {bingoGame.InviteCode}", "OK");
         await Navigation.PopAsync();
     }
 
@@ -90,7 +89,7 @@ public partial class CreateGame : ContentPage
     //        EndDate = endDate,
     //        Status = "Active",
     //        Cards = new List<BingoCard>(),
-    //        Players = new List<string> { HostId }, // L‰gg till HostId direkt i spelarnas lista
+    //        Players = new List<string> { HostId }, // L√§gg till HostId direkt i spelarnas lista
     //        InviteCode = GenerateInviteCode() // Generera invite-koden
     //    };
 
@@ -115,37 +114,37 @@ public partial class CreateGame : ContentPage
 
     private async void OnUpdateGameStatusClicked(object sender, EventArgs e)
     {
-        string gameId = "someGameId"; // H‰r ska du dynamiskt v‰lja r‰tt GameId
+        string gameId = "someGameId"; // H√§r ska du dynamiskt v√§lja r√§tt GameId
         string newStatus = "Finished";
         await _firestoreService.UpdateBingoGameStatusAsync(gameId, newStatus);
     }
 
     private async void OnDeleteGameClicked(object sender, EventArgs e)
     {
-        string gameId = "someGameId"; // H‰r ska du dynamiskt v‰lja r‰tt GameId
+        string gameId = "someGameId"; // H√§r ska du dynamiskt v√§lja r√§tt GameId
         await _firestoreService.DeleteBingoGameAsync(gameId);
     }
     private async Task<List<BingoCard>> GetCombinedChallengesAsync()
     {
-        // H‰mta antalet anv‰ndarskapade utmaningar
+        // H√§mta antalet anv√§ndarskapade utmaningar
         int userChallengeCount = userChallenges.Count;
 
         List<BingoCard> bingoCards = new();
 
         if (userChallengeCount >= 25)
         {
-            // Konvertera anv‰ndarskapade utmaningar direkt till BingoCards
+            // Konvertera anv√§ndarskapade utmaningar direkt till BingoCards
             bingoCards = userChallenges.Take(25)
                                         .Select(ConvertDictionaryToBingoCard)
                                         .ToList();
         }
         else
         {
-            // H‰mta resterande utmaningar frÂn Firebase
+            // H√§mta resterande utmaningar fr√•n Firebase
             int neededCount = 25 - userChallengeCount;
             var firebaseChallenges = await _firestoreService.GetRandomChallengesAsync(neededCount);
 
-            // Kombinera anv‰ndarskapade och Firebase-utmaningar
+            // Kombinera anv√§ndarskapade och Firebase-utmaningar
             bingoCards = userChallenges.Select(ConvertDictionaryToBingoCard)
                                        .Concat(firebaseChallenges.Select(ConvertDictionaryToBingoCard))
                                        .ToList();

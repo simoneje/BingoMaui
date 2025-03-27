@@ -3,14 +3,14 @@ namespace BingoMaui;
 
 public partial class StartPage : ContentPage
 {
-	public StartPage()
-	{
-		InitializeComponent();
+    public StartPage()
+    {
+        InitializeComponent();
 
-	}
+    }
     protected override void OnAppearing()
     {
-        
+
 
         // Använd global variabel för att visa nickname
         WelcomeLabel.Text = $"Välkommen, {App.LoggedInNickname}!";
@@ -23,6 +23,10 @@ public partial class StartPage : ContentPage
     private async void OnNavigateButtonClickedStart(object sender, EventArgs e)
     {
         await Navigation.PushAsync(new JoinGame());
+    }
+    private async void OnNavigateButtonClickedSettings(object sender, EventArgs e)
+    {
+        await Navigation.PushAsync(new SettingsPage());
     }
     private async void OnLogoutClicked(object sender, EventArgs e)
     {

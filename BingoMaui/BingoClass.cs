@@ -7,20 +7,7 @@ using System.Threading.Tasks;
 
 namespace BingoMaui
 {
-    [FirestoreData]
-    public class Player
-    {
-        [FirestoreProperty]
-        public string PlayerId { get; set; }  // Spelarens unika ID
-        [FirestoreProperty]
-        public string Name { get; set; }  // Spelarens namn
-        [FirestoreProperty]
-        public string GameId { get; set; }  // Spelet som spelaren är med i
-        [FirestoreProperty]
-        public string BingoCardId { get; set; }  // Id för spelaren's bingokort
-        [FirestoreProperty]
-        public bool HasWon { get; set; }  // Om spelaren har vunnit
-    }
+
     [FirestoreData]
     public class BingoGame
     {
@@ -34,6 +21,9 @@ namespace BingoMaui
 
         [FirestoreProperty]
         public string HostId { get; set; } // Vem som skapade spelet
+
+        [FirestoreProperty]
+        public Dictionary<string, int> Leaderboard { get; set; } = new(); // Leaderboard
 
         [FirestoreProperty]
         public string Status { get; set; } // Status, t.ex. "Active", "Finished"
@@ -51,6 +41,8 @@ namespace BingoMaui
         public List<string> Players { get; set; } // Lista över spelare i spelet
         [FirestoreProperty]
         public string InviteCode { get; set; } // Invite code för spelet 
+
+        public BingoGame() { }
     }
 
     [FirestoreData]
@@ -69,8 +61,9 @@ namespace BingoMaui
         public string Category { get; set; } // Kategori för utmaningen
 
         [FirestoreProperty]
-        public Dictionary<string, bool> PlayerProgress { get; set; } = new Dictionary<string, bool>();
-        // Key: PlayerId, Value: Om spelaren har klarat rutan
+        public List<CompletedInfo> CompletedBy { get; set; } = new();
+
+        public BingoCard() { }
     }
     [FirestoreData]
     public class Challenge
@@ -90,14 +83,9 @@ namespace BingoMaui
         [FirestoreProperty]
         public bool IsCompleted { get; set; }  // Om användaren har klarat den
 
+        // Uppdaterad property med CompletedInfo istället för strängar
         [FirestoreProperty]
-        public List<string> CompletedBy { get; set; } // Lista med spelare som klarat utmaningen
-    }
-    public class PlayerModel
-    {
-        public string UserId { get; set; }
-        public string Email { get; set; }
-        public bool IsInvited { get; set; } // Om spelaren är inbjuden
+        public List<CompletedInfo> CompletedBy { get; set; } = new List<CompletedInfo>();
     }
     [FirestoreData]
     public class Comment
@@ -119,11 +107,15 @@ namespace BingoMaui
 
         public Comment() { } // Parameterlös konstruktor krävs för Firestore
     }
-    public class User
+    [FirestoreData]
+    public class CompletedInfo
     {
-        public string Email { get; set; }
-        public string DisplayName { get; set; }
-        public DateTime CreatedAt { get; set; }
-    }
+        [FirestoreProperty]
+        public string PlayerId { get; set; }  // Spelarens unika ID
 
+        [FirestoreProperty]
+        public string UserColor { get; set; } // Exempelvis "#FF0000" för röd
+
+        public CompletedInfo() { }
+    }
 }

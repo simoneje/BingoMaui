@@ -61,8 +61,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <MauiImage Remove="Resources\Images\comment.png" />
+	  <MauiImage Remove="Resources\Images\competition.png" />
+	</ItemGroup>
+
+	<ItemGroup>
 	  <None Remove="bingomaui28990.json" />
 	  <None Remove="google-services.json" />
+	  <None Remove="Resources\Images\comment.png" />
+	  <None Remove="Resources\Images\competition.png" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -74,7 +81,9 @@
 	<ItemGroup>
 		<PackageReference Include="Firebase.Auth" Version="1.0.0" />
 		<PackageReference Include="FirebaseAdmin" Version="3.1.0" />
+		<PackageReference Include="Google.Apis.Auth" Version="1.69.0" />
 		<PackageReference Include="Google.Cloud.Firestore" Version="3.9.0" />
+		<PackageReference Include="Grpc.Core" Version="2.46.6" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
@@ -98,6 +107,15 @@
 	  </Compile>
 	  <Compile Update="CommentModal.xaml.cs">
 	    <DependentUpon>CommentModal.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="Leaderboard.xaml.cs">
+	    <DependentUpon>Leaderboard.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="ProfileSettingsPage.xaml.cs">
+	    <DependentUpon>ProfileSettingsPage.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="SettingsPage.xaml.cs">
+	    <DependentUpon>SettingsPage.xaml</DependentUpon>
 	  </Compile>
 	  <Compile Update="StartPage.xaml.cs">
 	    <DependentUpon>StartPage.xaml</DependentUpon>
@@ -127,6 +145,15 @@
 	    <Generator>MSBuild:Compile</Generator>
 	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
 	  </MauiXaml>
+	  <MauiXaml Update="Leaderboard.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="ProfileSettingsPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="SettingsPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="StartPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
@@ -146,7 +173,13 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <MauiAsset Include="bingomaui28990.json" />
+	  <MauiAsset Include="Resources\Images\comment.png" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <MauiAsset Update="Resources\Raw\bingomaui28990.json">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </MauiAsset>
 	</ItemGroup>
 
 </Project>

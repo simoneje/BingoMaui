@@ -10,6 +10,7 @@ namespace BingoMaui
         {
             InitializeComponent();
             CopyServiceAccountKeyAsync();
+            LogCredentialFileAsync();
             // Ladda nickname vid app-start
             var authService = new FirebaseAuthService();
             LoggedInNickname = authService.GetLoggedInNickname();
@@ -30,28 +31,62 @@ namespace BingoMaui
                 MainPage = new AppShell();
             }
         }
+        private async Task LogCredentialFileAsync()
+        {
+            string filePath = Path.Combine(FileSystem.AppDataDirectory, "credentials", "bingomaui28990.json");
+
+            if (File.Exists(filePath))
+            {
+                var fileContent = await File.ReadAllTextAsync(filePath);
+                Console.WriteLine($"JSON Key Content: {fileContent}");
+            }
+            else
+            {
+                Console.WriteLine("Credential file not found!");
+            }
+        }
         private async Task CopyServiceAccountKeyAsync()
         {
             string fileName = "bingomaui28990.json";
             string destPath = Path.Combine(FileSystem.AppDataDirectory, "credentials", fileName);
 
-            // Skapa målkatalogen om den inte finns
-            if (!Directory.Exists(Path.Combine(FileSystem.AppDataDirectory, "credentials")))
+            try
             {
-                Directory.CreateDirectory(Path.Combine(FileSystem.AppDataDirectory, "credentials"));
-            }
-
-            // Kopiera filen
-            if (!File.Exists(destPath))
-            {
-                using (var stream = await FileSystem.OpenAppPackageFileAsync(fileName))
-                using (var outputStream = File.Create(destPath))
+                if (!Directory.Exists(Path.Combine(FileSystem.AppDataDirectory, "credentials")))
                 {
-                    await stream.CopyToAsync(outputStream);
+                    Directory.CreateDirectory(Path.Combine(FileSystem.AppDataDirectory, "credentials"));
+                }
+
+                if (!File.Exists(destPath))
+                {
+                    using (var stream = await FileSystem.OpenAppPackageFileAsync(fileName))
+
+                    {
+                        //Tog bort async från stream.CopyTo(outputStream);
+                        using (var outputStream = File.Create(destPath))
+                        {
+                            stream.CopyTo(outputStream);
+                            Console.WriteLine($"File copied to: {destPath}");
+                        }
+                    }
+                }
+
+                Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", destPath);
+                Console.WriteLine("Credential file copied and environment variable set.");
+                if (File.Exists(destPath))
+                {
+                    var fileInfo = new FileInfo(destPath);
+                    Console.WriteLine($"Credential file exists. Size: {fileInfo.Length} bytes");
+                }
+                else
+                {
+                    Console.WriteLine("Credential file not found after copying!");
                 }
             }
-
-            Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", destPath);
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error copying credential file: {ex.Message}");
+            }
         }
         public static void ClearLoggedInNickname()
         {
