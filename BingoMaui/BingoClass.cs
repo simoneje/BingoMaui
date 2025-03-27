@@ -39,6 +39,7 @@ namespace BingoMaui
 
         [FirestoreProperty]
         public List<string> Players { get; set; } // Lista över spelare i spelet
+
         [FirestoreProperty]
         public string InviteCode { get; set; } // Invite code för spelet 
 
@@ -117,5 +118,23 @@ namespace BingoMaui
         public string UserColor { get; set; } // Exempelvis "#FF0000" för röd
 
         public CompletedInfo() { }
+    }
+    [FirestoreData]
+    public class UserProfile
+    {
+        [FirestoreProperty]
+        public string UserId { get; set; }
+
+        [FirestoreProperty]
+        public string Email { get; set; }
+
+        [FirestoreProperty]
+        public string Nickname { get; set; }
+
+        // Ny property för standardfärg
+        [FirestoreProperty]
+        public string PlayerColor { get; set; }  // t.ex. "#FF5733"
+
+        public UserProfile() { }
     }
 }

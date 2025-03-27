@@ -39,21 +39,24 @@ public partial class JoinGame : ContentPage
                     return;
                 }
 
-                // 2. Lägg till spelaren i spelets lista
-                await _firestoreService.AddPlayerToGameAsync(game.DocumentId, userId, game.GameName, selectedColor);
+                // 2. Hämta användarprofilen för att få deras färg
+                var userProfile = await _firestoreService.GetUserProfileAsync(userId);
+                App.CurrentUserProfile = userProfile;
+                // Använd defaultfärgen från profilen, annars en fallback (t.ex. vit)
+                string userColor = userProfile?.PlayerColor ?? "#FF5733";
 
+                // 3. Lägg till spelaren i spelets lista med användarens färg
+                await _firestoreService.AddPlayerToGameAsync(game.DocumentId, userId, game.GameName, userColor);
 
-                // 3. Hämta utmaningarna för spelet
+                // 4. Hämta utmaningarna för spelet
                 var challenges = _firestoreService.ConvertBingoCardsToChallenges(game.Cards);
-                //var challenges = await _firestoreService.GetChallengesForGameAsync(game.GameId);
-
                 if (challenges == null || challenges.Count == 0)
                 {
                     await DisplayAlert("Error", "Inga utmaningar hittades för spelet.", "OK");
                     return;
                 }
 
-                // 4. Navigera till BingoBricka med utmaningarna
+                // 5. Navigera till BingoBricka med utmaningarna
                 await DisplayAlert("Success", $"Du har gått med i spelet: {game.GameName}!", "OK");
                 await Navigation.PushAsync(new BingoBricka(game.GameId, challenges));
             }
@@ -68,6 +71,8 @@ public partial class JoinGame : ContentPage
             await DisplayAlert("Error", "Ett fel inträffade när du försökte gå med i spelet. Försök igen senare.", "OK");
         }
     }
+
+
     private List<Challenge> ConvertBingoCardsToChallenges(List<BingoCard> bingoCards)
     {
         return bingoCards.Select(card => new Challenge

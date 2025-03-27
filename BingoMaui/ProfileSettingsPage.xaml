@@ -1,17 +1,34 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="BingoMaui.ProfileSettingsPage"
-             Title="Profilinställningar">
+<ContentPage 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="BingoMaui.ProfileSettingsPage"
+    Title="Profilinställningar">
 
     <StackLayout Padding="20" Spacing="10">
+        <!-- Användarnamn -->
         <Label Text="Ditt användarnamn" FontAttributes="Bold" FontSize="18"/>
         <Entry x:Name="NicknameEntry" Placeholder="Ange nytt användarnamn"/>
 
-        <Button Text="Spara"
-                Clicked="OnSaveNicknameClicked"
-                BackgroundColor="Green"
-                TextColor="White"/>
-    </StackLayout>
+        <!-- Colorpicker -->
+        <CollectionView x:Name="ColorPickerCollectionView" SelectionMode="None">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout Orientation="Vertical" Span="4"/>
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Button BackgroundColor="{Binding}" 
+                    CornerRadius="25" 
+                    HeightRequest="50" 
+                    WidthRequest="50" 
+                    Margin="5"
+                    Clicked="OnColorButtonClicked"/>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
 
+        <!-- Spara-knapp -->
+        <Button Text="Spara färg" Clicked="OnSaveColorClicked" BackgroundColor="Green" TextColor="White"/>
+
+    </StackLayout>
 </ContentPage>

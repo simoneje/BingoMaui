@@ -279,14 +279,23 @@ namespace BingoMaui.Services
 
                 // Hämta eller skapa CompletedBy-listan
                 List<Dictionary<string, object>> completedByList;
-                if (!targetCard.TryGetValue("CompletedBy", out var completedByObject) || !(completedByObject is List<object>))
+                if (!targetCard.TryGetValue("CompletedBy", out var completedByObject) || !(completedByObject is List<object> rawCompletedBy))
                 {
                     completedByList = new List<Dictionary<string, object>>();
                     targetCard["CompletedBy"] = completedByList;
                 }
                 else
                 {
-                    completedByList = ((List<object>)targetCard["CompletedBy"]).Cast<Dictionary<string, object>>().ToList();
+                    completedByList = new List<Dictionary<string, object>>();
+                    foreach (var item in rawCompletedBy)
+                    {
+                        if (item is Dictionary<string, object> dict)
+                        {
+                            completedByList.Add(dict);
+                        }
+                    }
+                    // Sätt tillbaka den nya listan till targetCard så att vi jobbar med den
+                    targetCard["CompletedBy"] = completedByList;
                 }
 
                 // Kontrollera om spelaren redan finns i listan
@@ -297,7 +306,7 @@ namespace BingoMaui.Services
                 {
                     // Här används en placeholder för spelarens färg.
                     // Ersätt med din logik för att hämta spelarens färg, exempelvis från en Player-modell.
-                    string currentUserColor = "#FF5733";
+                    string currentUserColor = App.CurrentUserProfile.PlayerColor;
 
                     var completedInfo = new Dictionary<string, object>
                     {
@@ -526,14 +535,30 @@ namespace BingoMaui.Services
         {
             var userRef = _firestoreDb.Collection("users").Document(userId);
 
-            await userRef.SetAsync(new
+            var snapshot = await userRef.GetSnapshotAsync();
+            if (!snapshot.Exists)
             {
-                Email = email,
-                Nickname = nickname,
-                UserId = userId
-            });
-        }
+                var newUserProfile = new UserProfile
+                {
+                    UserId = userId,
+                    Email = email,
+                    Nickname = nickname,
+                    PlayerColor = "#FF5733" // Default färg
+                }; 
 
+                await userRef.SetAsync(newUserProfile);
+            }
+        }
+        public async Task<UserProfile> GetUserProfileAsync(string userId)
+        {
+            var docRef = _firestoreDb.Collection("users").Document(userId);
+            var snapshot = await docRef.GetSnapshotAsync();
+            if (snapshot.Exists)
+            {
+                return snapshot.ConvertTo<UserProfile>();
+            }
+            return null;
+        }
         public async Task<string> GetUserNicknameAsync(string userId)
         {
             var userRef = _firestoreDb.Collection("users").Document(userId);
@@ -560,6 +585,11 @@ namespace BingoMaui.Services
                 return $"{timeSpan.Days} dag{(timeSpan.Days > 1 ? "ar" : "")} sedan";
 
             return timestamp.ToString("yyyy-MM-dd HH:mm");
+        }
+        public async Task UpdatePlayerColorAsync(string userId, string newColor)
+        {
+            var docRef = _firestoreDb.Collection("users").Document(userId);
+            await docRef.UpdateAsync("PlayerColor", newColor);
         }
         public async Task UpdateUserNicknameAsync(string userId, string newNickname)
         {
