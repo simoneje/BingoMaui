@@ -101,7 +101,7 @@ public partial class ProfileSettingsPage : ContentPage
         }
     }
 
-    private async void OnSaveColorClicked(object sender, EventArgs e)
+    private async void OnSaveClicked(object sender, EventArgs e)
     {
         if (string.IsNullOrEmpty(_selectedColor))
         {

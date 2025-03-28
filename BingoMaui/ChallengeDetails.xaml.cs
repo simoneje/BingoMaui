@@ -116,8 +116,10 @@ namespace BingoMaui
 
             if (!_challenge.CompletedBy.Any(c => c.PlayerId == _currentUserId))
             {
+                var game = await _firestoreService.GetGameByIdAsync(_gameId);
+                var currentUserColor = game.PlayerInfo[_currentUserId].Color;
                 // Här sätter du den aktuella användarens färg – ersätt med din egen logik för att hämta en anpassad färg.
-                string currentUserColor = "#FF5733"; // eller t.ex. "din_fargkod"
+
                 _challenge.CompletedBy.Add(new CompletedInfo
                 {
                     PlayerId = _currentUserId,

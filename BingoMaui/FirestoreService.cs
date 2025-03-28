@@ -143,25 +143,29 @@ namespace BingoMaui.Services
         }
         public async Task AddPlayerToGameAsync(string documentId, string playerId, string gameName, string playerColor)
         {
-            var documentRef = _firestoreDb.Collection("BingoGames").Document(documentId);
+            var docRef = _firestoreDb.Collection("BingoGames").Document(documentId);
 
-            // Lägg till spelaren i "Players"-listan
-            await documentRef.UpdateAsync("Players", FieldValue.ArrayUnion(playerId));
-
-            // Lägg till spelarens färg i "PlayerInfo" (om du använder detta fält)
-            await documentRef.UpdateAsync("PlayerInfo", new Dictionary<string, object>
+            // Skapa (eller uppdatera) en ny "Players" dictionary
+            // där varje spelare har en sub-dictionary med "Color" och "Points".
+            var updateData = new Dictionary<string, object>
             {
-                { playerId, playerColor }
-            });
+                { $"Players.{playerId}", new Dictionary<string, object>
+                    {
+                        { "Color", playerColor },
+                        { "Points", 0 }  // Starta på 0 poäng
+                    }
+                }
+            };
 
-            // Lägg till spelaren i "Leaderboard" med 0 poäng
-            await documentRef.UpdateAsync("Leaderboard", new Dictionary<string, object>
-            {
-                { playerId, 0 }
-            });
+            // Gör en "merge"-liknande uppdatering på dokumentet, 
+            // så att du inte skriver över andra fält.
+            await docRef.UpdateAsync(updateData);
 
-            Console.WriteLine($"Player {playerId} added to game {gameName} with color {playerColor} and 0 points in Leaderboard.");
+            // Om du fortfarande vill ha en separat array av spelare för snabb access, 
+            // kan du göra:
+            // await docRef.UpdateAsync("PlayersList", FieldValue.ArrayUnion(playerId));
 
+            Console.WriteLine($"Player {playerId} added to game {gameName} with color {playerColor} and 0 points in dictionary 'Players'.");
         }
         public async Task<List<Dictionary<string, object>>> GetRandomChallengesAsync(int count)
         {
@@ -235,7 +239,7 @@ namespace BingoMaui.Services
 
             return game;
         }
-        public async Task MarkChallengeAsCompletedAsync(string gameId, string title, string playerId)
+        public async Task MarkChallengeAsCompletedAsync(string gameId, string title, string playerId, int pointUpdate = 1)
         {
             try
             {
@@ -287,11 +291,31 @@ namespace BingoMaui.Services
                 else
                 {
                     completedByList = new List<Dictionary<string, object>>();
-                    foreach (var item in rawCompletedBy)
+
+                    // Försök iterera med en for-loop
+                    for (int i = 0; i < rawCompletedBy.Count; i++)
                     {
-                        if (item is Dictionary<string, object> dict)
+                        try
                         {
-                            completedByList.Add(dict);
+                            var item = rawCompletedBy[i];
+                            if (item == null)
+                            {
+                                Console.WriteLine($"Element {i} är null.");
+                                continue;
+                            }
+                            Console.WriteLine($"Element {i} typ: {item.GetType().FullName}");
+                            if (item is Dictionary<string, object> dict)
+                            {
+                                completedByList.Add(dict);
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Element {i} har oväntad typ: {item.GetType().FullName}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Fel vid bearbetning av element {i}: {ex.Message}");
                         }
                     }
                     // Sätt tillbaka den nya listan till targetCard så att vi jobbar med den
@@ -306,7 +330,18 @@ namespace BingoMaui.Services
                 {
                     // Här används en placeholder för spelarens färg.
                     // Ersätt med din logik för att hämta spelarens färg, exempelvis från en Player-modell.
-                    string currentUserColor = App.CurrentUserProfile.PlayerColor;
+                    string currentUserColor = "#FFFFFF"; // fallback
+
+                    if (gameData.ContainsKey("PlayerInfo") && gameData["PlayerInfo"] is Dictionary<string, object> playerInfoDict)
+                    {
+                        if (playerInfoDict.TryGetValue(playerId, out var playerDataObj) && playerDataObj is Dictionary<string, object> playerData)
+                        {
+                            if (playerData.TryGetValue("Color", out var colorObj))
+                            {
+                                currentUserColor = colorObj.ToString();
+                            }
+                        }
+                    }
 
                     var completedInfo = new Dictionary<string, object>
                     {
@@ -318,28 +353,47 @@ namespace BingoMaui.Services
                     // Uppdatera kortet i Firestore med den nya CompletedBy-listan
                     await gameRef.UpdateAsync("Cards", cardsList);
                     Console.WriteLine($"Player {playerId} marked card with Title '{title}' as completed (using CompletedBy).");
+
+                    // ----- Uppdatera PlayerInfo -----
+                    Dictionary<string, object> playerInfo;
+                    if (gameData.ContainsKey("PlayerInfo") && gameData["PlayerInfo"] is Dictionary<string, object> pi)
+                    {
+                        playerInfo = new Dictionary<string, object>(pi);
+                    }
+                    else
+                    {
+                        playerInfo = new Dictionary<string, object>();
+                    }
+
+                    if (playerInfo.ContainsKey(playerId))
+                    {
+                        if (playerInfo[playerId] is Dictionary<string, object> playerData)
+                        {
+                            // Hämta nuvarande poäng, öka med 1
+                            int points = playerData.ContainsKey("Points") ? Convert.ToInt32(playerData["Points"]) : 0;
+                            // pointUpdate innehåller värdet som brickan är värd att markera
+                            points += pointUpdate;
+                            playerData["Points"] = points;
+
+                            playerInfo[playerId] = playerData;
+                        }
+                    }
+                    else
+                    {
+                        // Om spelaren inte finns, lägg till med initiala värden
+                        playerInfo[playerId] = new Dictionary<string, object>
+                    {
+                        { "Color", App.CurrentUserProfile.PlayerColor },
+                        { "Points", 1 }
+                    };
+                    }
+
+                    // Uppdatera PlayerInfo-fältet i Firestore
+                    await gameRef.UpdateAsync("PlayerInfo", playerInfo);
+                    Console.WriteLine($"PlayerInfo updated for player {playerId}.");
                 }
 
-                // ----- Uppdatera leaderboard -----
-                Dictionary<string, object> leaderboard = new Dictionary<string, object>();
-                if (gameData.ContainsKey("Leaderboard") && gameData["Leaderboard"] is Dictionary<string, object> lb)
-                {
-                    leaderboard = new Dictionary<string, object>(lb);
-                }
 
-                // Öka spelarens poäng med 1
-                if (leaderboard.ContainsKey(playerId))
-                {
-                    leaderboard[playerId] = Convert.ToInt32(leaderboard[playerId]) + 1;
-                }
-                else
-                {
-                    leaderboard[playerId] = 1;
-                }
-
-                // Uppdatera leaderboard-fältet i Firestore
-                await gameRef.UpdateAsync("Leaderboard", leaderboard);
-                Console.WriteLine($"Leaderboard updated for player {playerId}.");
 
                 // ----- Uppdatera lokal cache -----
                 if (!App.CompletedChallengesCache.ContainsKey(gameId))
@@ -358,6 +412,7 @@ namespace BingoMaui.Services
                     App.CompletedChallengesCache[gameId][title].Add(nickname);
                     Console.WriteLine($"Player {nickname} added to cache for challenge '{title}'.");
                 }
+
             }
             catch (Exception ex)
             {
@@ -651,23 +706,31 @@ namespace BingoMaui.Services
             // Skapa en dictionary för leaderboarden
             Dictionary<string, int> leaderboard = new Dictionary<string, int>();
 
-            // Om leaderboard-fältet finns i spelet, kopiera in de existerande poängen
-            if (game.Leaderboard != null)
+            // Om PlayerInfo finns, iterera över den och hämta poängen
+            if (game.PlayerInfo != null)
             {
-                foreach (var kvp in game.Leaderboard)
+                foreach (var kvp in game.PlayerInfo)
                 {
-                    leaderboard[kvp.Key] = Convert.ToInt32(kvp.Value);
+                    // kvp.Key = playerId, kvp.Value = spelarens data (t.ex. en Dictionary<string, object>)
+                    // Om vi använder PlayerStats-klassen
+                    if (kvp.Value is PlayerStats stats)
+                    {
+                        leaderboard[kvp.Key] = stats.Points;
+                    }
+                    else
+                    {
+                        leaderboard[kvp.Key] = 0;
+                    }
                 }
             }
-
-            // Antag att game.Players är en lista över alla spelare (userIds) i spelet.
-            if (game.Players != null)
+            else if (game.Players != null)
             {
+                // Fallback: om ingen PlayerInfo finns, sätt 0 poäng för varje spelare
                 foreach (var playerId in game.Players)
                 {
                     if (!leaderboard.ContainsKey(playerId))
                     {
-                        leaderboard[playerId] = 0; // Sätt 0 poäng om spelaren inte finns i leaderboarden
+                        leaderboard[playerId] = 0;
                     }
                 }
             }

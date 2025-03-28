@@ -13,6 +13,7 @@ public partial class CreateGame : ContentPage
     {
         InitializeComponent();
         _firestoreService = new FirestoreService();
+        
     }
     private BingoCard ConvertDictionaryToBingoCard(Dictionary<string, object> dict)
     {
@@ -53,7 +54,7 @@ public partial class CreateGame : ContentPage
             await DisplayAlert("Fel", "Användar-ID kunde inte hittas. Logga in igen.", "OK");
             return;
         }
-
+        App.CurrentUserProfile = await _firestoreService.GetUserProfileAsync(hostId);
         var bingoGame = new BingoGame
         {
             GameId = Guid.NewGuid().ToString(),
@@ -64,7 +65,10 @@ public partial class CreateGame : ContentPage
             Cards = combinedChallenges, // Kombinerade BingoCards
             Players = new List<string> { hostId }, // Lägg till HostId som första spelare
             InviteCode = GenerateInviteCode(),
-            Leaderboard = new Dictionary<string, int> { { hostId, 0 } }
+            PlayerInfo = new Dictionary<string, PlayerStats>
+            {
+                { hostId, new PlayerStats { Color = App.CurrentUserProfile.PlayerColor, Points = 0 } }
+            }
         };
 
         // Spara spelet i Firestore

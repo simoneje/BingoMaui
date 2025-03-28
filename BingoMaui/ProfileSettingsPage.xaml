@@ -28,7 +28,7 @@
         </CollectionView>
 
         <!-- Spara-knapp -->
-        <Button Text="Spara färg" Clicked="OnSaveColorClicked" BackgroundColor="Green" TextColor="White"/>
+        <Button Text="Spara" Clicked="OnSaveClicked" BackgroundColor="Green" TextColor="White"/>
 
     </StackLayout>
 </ContentPage>

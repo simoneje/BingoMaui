@@ -23,7 +23,7 @@ namespace BingoMaui
         public string HostId { get; set; } // Vem som skapade spelet
 
         [FirestoreProperty]
-        public Dictionary<string, int> Leaderboard { get; set; } = new(); // Leaderboard
+        public Dictionary<string, PlayerStats> PlayerInfo { get; set; } = new(); // Leaderboard
 
         [FirestoreProperty]
         public string Status { get; set; } // Status, t.ex. "Active", "Finished"
@@ -119,6 +119,18 @@ namespace BingoMaui
 
         public CompletedInfo() { }
     }
+    // Klass för PlayerInfo Dict
+    [FirestoreData]
+    public class PlayerStats
+    {
+        [FirestoreProperty]
+        public int Points { get; set; }  // Spelarens unika ID
+
+        [FirestoreProperty]
+        public string Color { get; set; } // Exempelvis "#FF0000" för röd
+
+        public PlayerStats() { }
+    }
     [FirestoreData]
     public class UserProfile
     {
@@ -131,7 +143,6 @@ namespace BingoMaui
         [FirestoreProperty]
         public string Nickname { get; set; }
 
-        // Ny property för standardfärg
         [FirestoreProperty]
         public string PlayerColor { get; set; }  // t.ex. "#FF5733"
 
