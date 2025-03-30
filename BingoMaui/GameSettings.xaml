@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BingoMaui.GameSettings"
+             Title="GameSettings">
+
+    <VerticalStackLayout Padding="20" Spacing="16">
+
+        <!-- Visar vilket spel det handlar om -->
+        <Label x:Name="GameNameLabel" FontSize="24" FontAttributes="Bold" />
+
+        <Label Text="Välj din färg i detta spel:" FontSize="18" />
+
+        <!-- Färgväljare -->
+        <CollectionView x:Name="ColorPicker"
+                        ItemsLayout="HorizontalList"
+                        SelectionMode="Single"
+                        HeightRequest="80"
+                        SelectionChanged="OnColorSelected">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Padding="10"
+                           Margin="5"
+                           CornerRadius="25"
+                           HeightRequest="50"
+                           WidthRequest="50"
+                           HasShadow="True"
+                           BackgroundColor="{Binding}">
+                        <Frame.GestureRecognizers>
+                            <TapGestureRecognizer CommandParameter="{Binding}" Tapped="OnColorTapped" />
+                        </Frame.GestureRecognizers>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Button Text="Spara"
+                Clicked="OnSaveClicked"
+                BackgroundColor="Green"
+                TextColor="White" />
+    </VerticalStackLayout>
+</ContentPage>

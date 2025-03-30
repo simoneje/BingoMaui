@@ -44,7 +44,7 @@ public partial class MyGames : ContentPage
         
         // Konvertera BingoCards till Challenges
         var challenges = _firestoreService.ConvertBingoCardsToChallenges(game.Cards);
-
+        App.ShouldRefreshChallenges = true;
         // Navigera till BingoBricka med gameId och konverterade utmaningar
         await Navigation.PushAsync(new BingoBricka(gameId, challenges));
     }

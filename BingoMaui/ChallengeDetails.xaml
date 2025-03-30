@@ -33,6 +33,11 @@
                 BackgroundColor="Green"
                 TextColor="White"
                 Clicked="OnMarkAsCompletedClicked" />
+        
+        <Button Text="Ångra klarmarkering"
+                BackgroundColor="DarkRed"
+                TextColor="White"
+                Clicked="OnUnmarkCompletedClicked" />
     </VerticalStackLayout>
 </ContentPage>
 

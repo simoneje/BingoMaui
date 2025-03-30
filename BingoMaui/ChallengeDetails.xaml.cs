@@ -33,54 +33,36 @@ namespace BingoMaui
         {
             try
             {
-                var cachedPlayers = new List<string>();
+                var updatedList = new List<string>();
 
-                // Kontrollera om vi har lokalt cachade spelare för denna challenge
-                if (App.CompletedChallengesCache.ContainsKey(_gameId) && App.CompletedChallengesCache[_gameId].ContainsKey(_challenge.Title))
+                // Kontrollera att CompletedBy är uppdaterad
+                if (_challenge.CompletedBy != null)
                 {
-                    cachedPlayers = App.CompletedChallengesCache[_gameId][_challenge.Title];
-
-                    // Uppdatera UI direkt med den cachade datan
-                    CompletedPlayersList.ItemsSource = cachedPlayers;
-                    Console.WriteLine($"Loaded completed players from cache for challenge: {_challenge.Title}");
-                    return; // Avsluta metoden här om vi har cached data
-                }
-
-                // Om inga spelare finns i cachen, hämta från Firestore
-                var updatedChallenge = await _firestoreService.GetChallengeByTitleAsync(_gameId, _challenge.Title);
-
-                if (updatedChallenge?.CompletedBy != null && updatedChallenge.CompletedBy.Count > 0)
-                {
-                    var completedPlayers = new List<string>();
-
-                    foreach (var completed in updatedChallenge.CompletedBy)
+                    foreach (var entry in _challenge.CompletedBy)
                     {
-                        // Anta att "completed" är av typen CompletedInfo och har en property PlayerId
-                        var nickname = await _firestoreService.GetUserNicknameAsync(completed.PlayerId);
-                        completedPlayers.Add(nickname);
+                        var nickname = await _firestoreService.GetUserNicknameAsync(entry.PlayerId);
+                        updatedList.Add(nickname);
                     }
 
-                    // Uppdatera UI med nicknames
-                    CompletedPlayersList.ItemsSource = completedPlayers;
+                    // Uppdatera UI
+                    CompletedPlayersList.ItemsSource = updatedList;
 
-                    // Uppdatera lokal cache med de hämtade spelarna
+                    // Uppdatera cache
                     if (!App.CompletedChallengesCache.ContainsKey(_gameId))
-                    {
                         App.CompletedChallengesCache[_gameId] = new Dictionary<string, List<string>>();
-                    }
 
-                    if (!App.CompletedChallengesCache[_gameId].ContainsKey(_challenge.Title))
-                    {
-                        App.CompletedChallengesCache[_gameId][_challenge.Title] = new List<string>();
-                    }
+                    App.CompletedChallengesCache[_gameId][_challenge.Title] = updatedList;
 
-                    App.CompletedChallengesCache[_gameId][_challenge.Title] = completedPlayers;
-
-                    Console.WriteLine($"Fetched and cached completed players for challenge: {_challenge.Title}");
+                    Console.WriteLine($"Loaded players directly from in-memory challenge.CompletedBy");
                 }
                 else
                 {
-                    CompletedPlayersList.ItemsSource = null; // Ingen spelare har klarat utmaningen
+                    // Ingen har klarat utmaningen
+                    CompletedPlayersList.ItemsSource = null;
+
+                    // Rensa även cachen om den fanns
+                    if (App.CompletedChallengesCache.ContainsKey(_gameId))
+                        App.CompletedChallengesCache[_gameId].Remove(_challenge.Title);
                 }
             }
             catch (Exception ex)
@@ -147,6 +129,26 @@ namespace BingoMaui
 
             await DisplayAlert("Framgång!", "Utmaningen är markerad som klarad!", "OK");
         }
+        private async void OnUnmarkCompletedClicked(object sender, EventArgs e)
+        {
+            var confirm = await DisplayAlert("Bekräfta", "Vill du verkligen ta bort din klarmarkering?", "Ja", "Avbryt");
+            if (!confirm) return;
 
+            await _firestoreService.UnmarkChallengeAsCompletedAsync(_gameId, _challenge.Title, _currentUserId);
+
+            // Uppdatera lokal modell
+            _challenge.CompletedBy?.RemoveAll(c => c.PlayerId == _currentUserId);
+
+            // Rensa från cache
+            if (App.CompletedChallengesCache.ContainsKey(_gameId) &&
+                App.CompletedChallengesCache[_gameId].ContainsKey(_challenge.Title))
+            {
+                var nickname = await _firestoreService.GetUserNicknameAsync(_currentUserId);
+                App.CompletedChallengesCache[_gameId][_challenge.Title].Remove(nickname);
+            }
+
+            LoadCompletedPlayers();
+            await DisplayAlert("Uppdaterat", "Din klarmarkering har tagits bort.", "OK");
+        }
     }
 }

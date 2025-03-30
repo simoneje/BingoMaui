@@ -111,6 +111,12 @@
 	  <Compile Update="Leaderboard.xaml.cs">
 	    <DependentUpon>Leaderboard.xaml</DependentUpon>
 	  </Compile>
+	  <Compile Update="GameSettings.xaml.cs">
+	    <DependentUpon>GameSettings.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="DevToolsPage.xaml.cs">
+	    <DependentUpon>DevToolsPage.xaml</DependentUpon>
+	  </Compile>
 	  <Compile Update="ProfileSettingsPage.xaml.cs">
 	    <DependentUpon>ProfileSettingsPage.xaml</DependentUpon>
 	  </Compile>
@@ -146,6 +152,12 @@
 	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
 	  </MauiXaml>
 	  <MauiXaml Update="Leaderboard.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="GameSettings.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="DevToolsPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="ProfileSettingsPage.xaml">

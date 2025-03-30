@@ -19,7 +19,7 @@ public partial class JoinGame : ContentPage
     {
         try
         {
-            var inviteCode = InviteCodeEntry.Text;
+            var inviteCode = InviteCodeEntry.Text.ToUpper();
 
             if (string.IsNullOrEmpty(inviteCode))
             {
@@ -33,7 +33,7 @@ public partial class JoinGame : ContentPage
             if (game != null)
             {
                 var userId = Preferences.Get("UserId", string.Empty); // Hämta inloggad användares ID
-                if (game.Players.Contains(userId))
+                if (game.PlayerInfo.ContainsKey(userId))
                 {
                     await DisplayAlert("Info", "Du är redan med i detta spel!", "OK");
                     return;
@@ -59,6 +59,7 @@ public partial class JoinGame : ContentPage
                 // 5. Navigera till BingoBricka med utmaningarna
                 await DisplayAlert("Success", $"Du har gått med i spelet: {game.GameName}!", "OK");
                 await Navigation.PushAsync(new BingoBricka(game.GameId, challenges));
+                App.ShouldRefreshChallenges = true;
             }
             else
             {

@@ -23,6 +23,9 @@ namespace BingoMaui
         public string HostId { get; set; } // Vem som skapade spelet
 
         [FirestoreProperty]
+        public List<string> PlayerIds { get; set; } = new();
+
+        [FirestoreProperty]
         public Dictionary<string, PlayerStats> PlayerInfo { get; set; } = new(); // Leaderboard
 
         [FirestoreProperty]
@@ -36,9 +39,6 @@ namespace BingoMaui
 
         [FirestoreProperty]
         public List<BingoCard> Cards { get; set; } // Alla bingokort i spelet
-
-        [FirestoreProperty]
-        public List<string> Players { get; set; } // Lista över spelare i spelet
 
         [FirestoreProperty]
         public string InviteCode { get; set; } // Invite code för spelet 

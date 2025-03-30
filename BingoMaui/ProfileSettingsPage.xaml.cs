@@ -14,8 +14,7 @@ public partial class ProfileSettingsPage : ContentPage
         _userId = Preferences.Get("UserId", string.Empty);
         var colors = new List<string>
             {
-                "#FF5733", "#33FF57", "#3357FF", "#FF33A1",
-                "#A133FF", "#33FFF2", "#F2FF33", "#FF8F33"
+                "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF"
             };
 
         ColorPickerCollectionView.ItemsSource = colors;
@@ -58,7 +57,12 @@ public partial class ProfileSettingsPage : ContentPage
             NicknameEntry.Text = nickname;
         }
     }
-
+#if DEBUG
+    private async void OnDevButtonClicked(object sender, EventArgs e)
+    {
+        await Navigation.PushAsync(new DevToolsPage());
+    }
+#endif
     private async void OnSaveNicknameClicked(object sender, EventArgs e)
     {
         var newNickname = NicknameEntry.Text.Trim();
@@ -80,6 +84,18 @@ public partial class ProfileSettingsPage : ContentPage
     }
     private async void OnColorButtonClicked(object sender, EventArgs e)
     {
+        var newNickname = NicknameEntry.Text.Trim();
+        if (string.IsNullOrEmpty(newNickname))
+        {
+            await DisplayAlert("Fel", "Du måste ange ett nickname!", "OK");
+            return;
+        }
+
+        await _firestoreService.UpdateUserNicknameAsync(_userId, newNickname);
+
+        // Uppdatera globalt lagrat nickname
+        App.LoggedInNickname = newNickname;
+        Preferences.Set("Nickname", newNickname);
         if (sender is Button btn)
         {
             // Hämta färgen från knappens bakgrund
@@ -103,6 +119,18 @@ public partial class ProfileSettingsPage : ContentPage
 
     private async void OnSaveClicked(object sender, EventArgs e)
     {
+        var newNickname = NicknameEntry.Text.Trim();
+        if (string.IsNullOrEmpty(newNickname))
+        {
+            await DisplayAlert("Fel", "Du måste ange ett nickname!", "OK");
+            return;
+        }
+
+        await _firestoreService.UpdateUserNicknameAsync(_userId, newNickname);
+
+        // Uppdatera globalt lagrat nickname
+        App.LoggedInNickname = newNickname;
+        Preferences.Set("Nickname", newNickname);
         if (string.IsNullOrEmpty(_selectedColor))
         {
             await DisplayAlert("Error", "Ingen färg har valts.", "OK");

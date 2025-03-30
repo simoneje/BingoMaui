@@ -67,6 +67,11 @@
                     BackgroundColor="Gray"
                     TextColor="White"
                     Padding="10"/>
+                <Button Text="Inställningar"
+                    Clicked="OnGameSettingsClicked"
+                    BackgroundColor="Gray"
+                    TextColor="White"
+                    Padding="10"/>
             </StackLayout>
             <!-- Knapp för att visa kommentarer -->
         </Grid>

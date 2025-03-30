@@ -12,6 +12,7 @@ public partial class BingoBricka : ContentPage
     private double _startScale = 1;
     private double _xOffset = 0;
     private double _yOffset = 0;
+    private string _inviteCode;
     private readonly FirestoreService _firestoreService;
     private string _gameId;
     private List<Challenge> _challenges;
@@ -22,15 +23,24 @@ public partial class BingoBricka : ContentPage
         _firestoreService = new FirestoreService(); // Skapa en instans av tjänstklassen
         _gameId = gameId; // ID för specifika spelet som visas
         _challenges = challenges;
+        _inviteCode = string.Empty;
     }
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        var game = await _firestoreService.GetGameByIdAsync(_gameId);
-        if (game != null)
+        if (App.ShouldRefreshChallenges)
         {
-            InviteCodeLabel.Text = game.InviteCode; // Uppdatera InviteCode på UI
+            var game = await _firestoreService.GetGameByIdAsync(_gameId);
+            if (game != null)
+            {
+                _inviteCode = game.InviteCode;
+            }
+            var updatedChallenges = _firestoreService.ConvertBingoCardsToChallenges(game.Cards);
+            _challenges = updatedChallenges;
+            App.ShouldRefreshChallenges = false;
+            await DisplayAlert("uppdaterat","uppdaterat challenges","OK");
         }
+        InviteCodeLabel.Text = _inviteCode; // Uppdatera InviteCode på UI
         PopulateBingoGrid(_challenges);
         if (!BingoGrid.GestureRecognizers.OfType<PinchGestureRecognizer>().Any())
         {
@@ -168,6 +178,7 @@ public partial class BingoBricka : ContentPage
                     // Lägg till "cellen" i BingoGrid
                     BingoGrid.Add(tileGrid, col, row);
                     index++;
+
                 }
             }
         }
@@ -177,89 +188,24 @@ public partial class BingoBricka : ContentPage
             await Application.Current.MainPage.DisplayAlert("Fel", "Ett fel inträffade när bingobrickan skulle fyllas.", "OK");
         }
     }
-    private async void PPopulateBingoGrid(List<Challenge> challenges)
+    private async void OnGameSettingsClicked(object sender, EventArgs e)
     {
         try
         {
-            // Kontrollera att BingoGrid inte är null
-            if (BingoGrid == null)
+            var game = await _firestoreService.GetGameByIdAsync(_gameId);
+            if (game == null)
             {
-                Console.WriteLine("Error: BingoGrid är null.");
+                await DisplayAlert("Fel", "Kunde inte hämta spelet.", "OK");
                 return;
             }
 
-            // Kontrollera att challenges-listan inte är null
-            if (challenges == null || challenges.Count == 0)
-            {
-                Console.WriteLine("Error: Challenge-listan är null eller tom.");
-                await Application.Current.MainPage.DisplayAlert("Fel", "Inga utmaningar att visa.", "OK");
-                return;
-            }
-
-            BingoGrid.Children.Clear();
-            int index = 0;
-
-            for (int row = 0; row < 5; row++)
-            {
-                for (int col = 0; col < 5; col++)
-                {
-                    if (index >= challenges.Count)
-                        break;
-
-                    var challenge = challenges[index];
-
-                    // Kontrollera att challenge inte är null
-                    if (challenge == null)
-                    {
-                        Console.WriteLine($"Error: Challenge vid index {index} är null.");
-                        continue;
-                    }
-
-                    // Skapa knappen
-                    var button = new Button
-                    {
-                        Text = challenge.Title ?? "Okänd utmaning",
-                        FontSize = CalculateFontSize(challenge.Title),
-                        HorizontalOptions = LayoutOptions.FillAndExpand,
-                        VerticalOptions = LayoutOptions.FillAndExpand,
-                        BackgroundColor = Colors.Purple,
-                        TextColor = Colors.White,
-                        Padding = new Thickness(5),
-                        TextTransform = TextTransform.None,
-                        LineBreakMode = LineBreakMode.WordWrap
-                    };
-
-                    // Klick-händelse: Navigera till ChallengeDetails
-                    button.Clicked += async (sender, args) =>
-                    {
-                        try
-                        {
-                            if (string.IsNullOrEmpty(_gameId))
-                            {
-                                Console.WriteLine("Error: _gameId är null eller tom.");
-                                return;
-                            }
-
-                            var challengeDetailsPage = new ChallengeDetails(_gameId, challenge);
-                            await Navigation.PushAsync(challengeDetailsPage);
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Error navigating to ChallengeDetails: {ex.Message}");
-                            await Application.Current.MainPage.DisplayAlert("Fel", "Ett fel inträffade vid navigering till utmaningsdetaljer.", "OK");
-                        }
-                    };
-
-                    // Lägg till knappen i grid
-                    BingoGrid.Add(button, col, row);
-                    index++;
-                }
-            }
+            // Navigera till GameSettingsPage med PlayerInfo
+            await Navigation.PushAsync(new GameSettings(_gameId, game.PlayerInfo));
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error populating BingoGrid: {ex.Message}");
-            await Application.Current.MainPage.DisplayAlert("Fel", "Ett fel inträffade när bingobrickan skulle fyllas.", "OK");
+            Console.WriteLine($"Fel vid navigering till inställningar: {ex.Message}");
+            await DisplayAlert("Fel", "Kunde inte öppna inställningar för spelet.", "OK");
         }
     }
 

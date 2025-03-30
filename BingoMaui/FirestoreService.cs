@@ -131,12 +131,20 @@ namespace BingoMaui.Services
 
             if (querySnapshot.Documents.Count > 0)
             {
+                try
+                {
+                    var document = querySnapshot.Documents[0];
+                    var bingoGame = document.ConvertTo<BingoGame>();
+                    bingoGame.DocumentId = document.Id; // Tilldela dokumentets ID
 
-                var document = querySnapshot.Documents[0];
-                var bingoGame = document.ConvertTo<BingoGame>();
-                bingoGame.DocumentId = document.Id; // Tilldela dokumentets ID
+                    return bingoGame;
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine($"🔥 Error parsing BingoGame from Firestore: {ex.Message}");
+                    throw;
+                }
 
-                return bingoGame;
             }
 
             return null; // Om spelet inte hittades
@@ -145,27 +153,22 @@ namespace BingoMaui.Services
         {
             var docRef = _firestoreDb.Collection("BingoGames").Document(documentId);
 
-            // Skapa (eller uppdatera) en ny "Players" dictionary
-            // där varje spelare har en sub-dictionary med "Color" och "Points".
+            // Skapa eller uppdatera PlayerInfo
             var updateData = new Dictionary<string, object>
             {
-                { $"Players.{playerId}", new Dictionary<string, object>
+                { $"PlayerInfo.{playerId}", new Dictionary<string, object>
                     {
                         { "Color", playerColor },
-                        { "Points", 0 }  // Starta på 0 poäng
+                        { "Points", 0 }
                     }
-                }
+                },// ✅ Lägg till användaren i PlayerIds-arrayen
+                { "PlayerIds", FieldValue.ArrayUnion(playerId) } // ✅ Slås ihop här
             };
-
-            // Gör en "merge"-liknande uppdatering på dokumentet, 
-            // så att du inte skriver över andra fält.
+            
+            // Uppdatera Firestore med merge-liknande uppdatering
             await docRef.UpdateAsync(updateData);
 
-            // Om du fortfarande vill ha en separat array av spelare för snabb access, 
-            // kan du göra:
-            // await docRef.UpdateAsync("PlayersList", FieldValue.ArrayUnion(playerId));
-
-            Console.WriteLine($"Player {playerId} added to game {gameName} with color {playerColor} and 0 points in dictionary 'Players'.");
+            Console.WriteLine($"✅ Player {playerId} added to game '{gameName}' in PlayerInfo with color {playerColor} and 0 points.");
         }
         public async Task<List<Dictionary<string, object>>> GetRandomChallengesAsync(int count)
         {
@@ -185,17 +188,36 @@ namespace BingoMaui.Services
             var random = new Random();
             return allChallenges.OrderBy(x => random.Next()).Take(Math.Min(count, allChallenges.Count)).ToList();
         }
+        public async Task<List<BingoGame>> GGetGamesForUserAsync(string userId)
+        {
+            var gamesRef = _firestoreDb.Collection("BingoGames");
+            var snapshot = await gamesRef.GetSnapshotAsync();
+
+            var games = new List<BingoGame>();
+            foreach (var doc in snapshot.Documents)
+            {
+                var data = doc.ToDictionary();
+                if (data.ContainsKey("PlayerInfo") && data["PlayerInfo"] is Dictionary<string, object> pi && pi.ContainsKey(userId))
+                {
+                    var game = doc.ConvertTo<BingoGame>();
+                    game.DocumentId = doc.Id;
+                    games.Add(game);
+                }
+            }
+
+            return games;
+        }
         public async Task<List<BingoGame>> GetGamesForUserAsync(string userId)
         {
             var gamesRef = _firestoreDb.Collection("BingoGames");
-            var query = gamesRef.WhereArrayContains("Players", userId);
+            var query = gamesRef.WhereArrayContains("PlayerIds", userId);
             var snapshot = await query.GetSnapshotAsync();
 
             var games = new List<BingoGame>();
             foreach (var doc in snapshot.Documents)
             {
                 var game = doc.ConvertTo<BingoGame>();
-                game.DocumentId = doc.Id; // Lägg till DocumentId från snapshot
+                game.DocumentId = doc.Id;
                 games.Add(game);
             }
 
@@ -419,6 +441,111 @@ namespace BingoMaui.Services
                 Console.WriteLine($"Error updating challenge progress: {ex.Message}");
             }
         }
+        public async Task UnmarkChallengeAsCompletedAsync(string gameId, string title, string playerId)
+        {
+            var game = await GetGameByIdAsync(gameId);
+            if (game == null || string.IsNullOrEmpty(game.DocumentId)) return;
+
+            var gameRef = _firestoreDb.Collection("BingoGames").Document(game.DocumentId);
+            var gameSnapshot = await gameRef.GetSnapshotAsync();
+            var gameData = gameSnapshot.ToDictionary();
+
+            if (!gameData.TryGetValue("Cards", out var cardsObj) || cardsObj is not List<object> cardsList)
+                return;
+
+            foreach (var cardObj in cardsList.OfType<Dictionary<string, object>>())
+            {
+                if (cardObj.TryGetValue("Title", out var t) && t.ToString() == title &&
+                    cardObj.TryGetValue("CompletedBy", out var cb) && cb is List<object> cbList)
+                {
+                    var updatedList = cbList
+                        .OfType<Dictionary<string, object>>()
+                        .Where(entry => entry.TryGetValue("PlayerId", out var pid) && pid.ToString() != playerId)
+                        .ToList();
+
+                    cardObj["CompletedBy"] = updatedList;
+                    break;
+                }
+            }
+
+            // Minska poäng i PlayerInfo
+            if (gameData.TryGetValue("PlayerInfo", out var playerInfoObj) &&
+                playerInfoObj is Dictionary<string, object> playerInfoDict &&
+                playerInfoDict.TryGetValue(playerId, out var playerStatsObj) &&
+                playerStatsObj is Dictionary<string, object> statsDict &&
+                statsDict.TryGetValue("Points", out var pointsObj))
+            {
+                int points = Convert.ToInt32(pointsObj);
+                statsDict["Points"] = Math.Max(points - 1, 0); // undvik negativa poäng
+                playerInfoDict[playerId] = statsDict;
+            }
+
+            await gameRef.UpdateAsync(new Dictionary<string, object>
+            {
+                { "Cards", cardsList },
+                { "PlayerInfo", gameData["PlayerInfo"] }
+            });
+
+            Console.WriteLine($"Removed {playerId} from CompletedBy for '{title}' and updated PlayerInfo.");
+        }
+        public async Task UpdatePlayerColorInGameAsync(string gameId, string playerId, string newColor)
+        {
+            var game = await GetGameByIdAsync(gameId);
+            if (game == null || string.IsNullOrEmpty(game.DocumentId))
+                return;
+
+            var docRef = _firestoreDb.Collection("BingoGames").Document(game.DocumentId);
+
+            // 1. Uppdatera PlayerInfo (huvudfärg för spelaren i spelet)
+            if (game.PlayerInfo != null && game.PlayerInfo.ContainsKey(playerId))
+            {
+                game.PlayerInfo[playerId].Color = newColor;
+            }
+            if (game.PlayerInfo == null)
+            {
+                Console.WriteLine("PlayerInfo not found in game DB");
+                return;
+            }
+            if (game.Cards == null)
+            {
+                Console.WriteLine("Cards not found in game DB");
+                return;
+            }
+            // 2. Uppdatera CompletedBy-fältet i varje kort där spelaren finns
+            bool cardsModified = false;
+
+            if (game.Cards != null)
+            {
+                foreach (var card in game.Cards)
+                {
+                    if (card.CompletedBy != null)
+                    {
+                        var entry = card.CompletedBy.FirstOrDefault(c => c.PlayerId == playerId);
+                        if (entry != null)
+                        {
+                            entry.UserColor = newColor;
+                            cardsModified = true;
+                            
+                        }
+                    }
+                }
+            }
+
+            // 3. Spara ändringarna till Firestore
+            var updates = new Dictionary<string, object>
+            {
+                { "PlayerInfo", game.PlayerInfo }
+            };
+
+            if (cardsModified)
+            {
+                updates["Cards"] = game.Cards;
+                App.ShouldRefreshChallenges = true;
+            }
+
+            await docRef.UpdateAsync(updates);
+            Console.WriteLine($"Spelarens färg uppdaterad till '{newColor}' i PlayerInfo och CompletedBy för spelet {gameId}.");
+        }
         public async Task<List<Comment>> GetCommentsAsync(string gameId)
         {
             var comments = new List<Comment>();
@@ -469,18 +596,18 @@ namespace BingoMaui.Services
             }
         }
 
-        public async Task<bool> IsChallengeCompletedAsync(string cardId, string playerId)
-        {
-            var cardRef = _firestoreDb.Collection("BingoCards").Document(cardId);
-            var snapshot = await cardRef.GetSnapshotAsync();
+        //public async Task<bool> IsChallengeCompletedAsync(string cardId, string playerId)
+        //{
+        //    var cardRef = _firestoreDb.Collection("BingoCards").Document(cardId);
+        //    var snapshot = await cardRef.GetSnapshotAsync();
 
-            if (snapshot.Exists && snapshot.ContainsField($"PlayerProgress.{playerId}"))
-            {
-                return snapshot.GetValue<bool>($"PlayerProgress.{playerId}");
-            }
+        //    if (snapshot.Exists && snapshot.ContainsField($"PlayerProgress.{playerId}"))
+        //    {
+        //        return snapshot.GetValue<bool>($"PlayerProgress.{playerId}");
+        //    }
 
-            return false;
-        }
+        //    return false;
+        //}
         public async Task<Challenge> GetChallengeByTitleAsync(string gameId, string title)
         {
             try
@@ -723,14 +850,17 @@ namespace BingoMaui.Services
                     }
                 }
             }
-            else if (game.Players != null)
+            else if (game.PlayerInfo != null)
             {
                 // Fallback: om ingen PlayerInfo finns, sätt 0 poäng för varje spelare
-                foreach (var playerId in game.Players)
+                foreach (var kvp in game.PlayerInfo)
                 {
+                    var playerId = kvp.Key;
+                    var playerStats = kvp.Value;
+
                     if (!leaderboard.ContainsKey(playerId))
                     {
-                        leaderboard[playerId] = 0;
+                        leaderboard[playerId] = playerStats?.Points ?? 0;
                     }
                 }
             }

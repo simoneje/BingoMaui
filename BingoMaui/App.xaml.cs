@@ -7,6 +7,7 @@ namespace BingoMaui
         public static UserProfile CurrentUserProfile { get; set; }
         public static Dictionary<string, Dictionary<string, List<string>>> CompletedChallengesCache { get; private set; } =
             new Dictionary<string, Dictionary<string, List<string>>>();
+        public static bool ShouldRefreshChallenges { get; set; } = false;
         public App()
         {
             InitializeComponent();

@@ -29,6 +29,11 @@
 
         <!-- Spara-knapp -->
         <Button Text="Spara" Clicked="OnSaveClicked" BackgroundColor="Green" TextColor="White"/>
-
+        <Button Text="Dev Tools"
+        Clicked="OnDevButtonClicked"
+        BackgroundColor="Gray"
+        TextColor="White"
+        IsVisible="True" />
+        <!-- Du kan dölja detta i RELEASE -->
     </StackLayout>
 </ContentPage>

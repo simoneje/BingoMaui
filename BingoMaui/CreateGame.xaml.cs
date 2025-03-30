@@ -63,23 +63,22 @@ public partial class CreateGame : ContentPage
             EndDate = endDateUtc,
             Status = "Active",
             Cards = combinedChallenges, // Kombinerade BingoCards
-            Players = new List<string> { hostId }, // Lägg till HostId som första spelare
             InviteCode = GenerateInviteCode(),
             PlayerInfo = new Dictionary<string, PlayerStats>
             {
                 { hostId, new PlayerStats { Color = App.CurrentUserProfile.PlayerColor, Points = 0 } }
-            }
+            },
+            PlayerIds = new List<string> { hostId } // ✅ lägg till här
         };
 
         // Spara spelet i Firestore
         await _firestoreService.CreateBingoGameAsync(bingoGame);
-
+        App.ShouldRefreshChallenges = true;
         // Navigera till BingoBricka och skicka med både GameId och Challenges
         await Navigation.PushAsync(new BingoBricka(bingoGame.GameId, challenges));
 
         // Bekräftelse och navigering tillbaka
         await DisplayAlert("Framgång!", $"Spelet {bingoGame.GameName} har skapats med Invite Code: {bingoGame.InviteCode}", "OK");
-        await Navigation.PopAsync();
     }
 
     //private async Task CreateBingoGameWithInviteCodeAsync(DateTime startDate, DateTime endDate, string GameName, string HostId)
