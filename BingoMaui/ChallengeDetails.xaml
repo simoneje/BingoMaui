@@ -20,24 +20,50 @@
 
         <!-- Lista över spelare som har klarat -->
         <Label Text="Spelare som klarat utmaningen:" FontSize="18" />
-        <CollectionView x:Name="CompletedPlayersList" HeightRequest="200">
+        <CollectionView x:Name="CompletedPlayersList"
+                SelectionMode="Single"
+                SelectionChanged="OnPlayerSelected">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Label Text="{Binding}" FontSize="16" />
+                    <Label Text="{Binding Nickname}"
+                        TextColor="{Binding Color}"
+                        FontAttributes="Bold"
+                        FontSize="16"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center">
+                        <Label.Shadow>
+                            <Shadow Brush="Black"
+                                Offset="0,0"
+                                Radius="1"
+                                Opacity="1"/>
+                        </Label.Shadow>
+                    </Label>
+
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
+        <StackLayout Grid.Row="2"
+             Orientation="Horizontal"
+             HorizontalOptions="Center"
+             VerticalOptions="End"
+             Spacing="10"
+             Margin="0,10,0,10">
 
-        <!-- Knapp för att markera utmaningen som klarad -->
-        <Button Text="Markera som klarad"
-                BackgroundColor="Green"
-                TextColor="White"
-                Clicked="OnMarkAsCompletedClicked" />
-        
-        <Button Text="Ångra klarmarkering"
-                BackgroundColor="DarkRed"
-                TextColor="White"
-                Clicked="OnUnmarkCompletedClicked" />
+            <Button x:Name="MarkCompleted"
+                    Text="Markera som klarad" 
+                    Clicked="OnMarkAsCompletedClicked"
+                    BackgroundColor="Green"
+                    TextColor="White"
+                    Padding="10"/>
+
+            <Button x:Name="MarkUnCompleted"
+                    Text="Ångra klarmarkering"
+                    BackgroundColor="DarkRed"
+                    TextColor="White"
+                    Padding="10"
+                    Clicked="OnUnmarkCompletedClicked"/>
+            <!-- Knapp för att markera utmaningen som klarad -->
+        </StackLayout>
     </VerticalStackLayout>
 </ContentPage>
 

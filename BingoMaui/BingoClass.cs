@@ -81,9 +81,6 @@ namespace BingoMaui
         [FirestoreProperty]
         public string Category { get; set; }   // Kategori, tex "Träning", "Hälsa"
 
-        [FirestoreProperty]
-        public bool IsCompleted { get; set; }  // Om användaren har klarat den
-
         // Uppdaterad property med CompletedInfo istället för strängar
         [FirestoreProperty]
         public List<CompletedInfo> CompletedBy { get; set; } = new List<CompletedInfo>();
@@ -129,6 +126,9 @@ namespace BingoMaui
         [FirestoreProperty]
         public string Color { get; set; } // Exempelvis "#FF0000" för röd
 
+        [FirestoreProperty]
+        public string Nickname { get; set; }
+
         public PlayerStats() { }
     }
     [FirestoreData]
@@ -146,6 +146,33 @@ namespace BingoMaui
         [FirestoreProperty]
         public string PlayerColor { get; set; }  // t.ex. "#FF5733"
 
+        [FirestoreProperty]
+        public string ProfileImageUrl { get; set; }
+
+        [FirestoreProperty]
+        public string Bio { get; set; }
+
+        [FirestoreProperty]
+        public int? Age { get; set; }
+
+        [FirestoreProperty]
+        public string Gender { get; set; }
+
+        [FirestoreProperty]
+        public string Interests { get; set; }
+
+        [FirestoreProperty]
+        public string Goal { get; set; }
+
+        [FirestoreProperty]
+        public List<string> Achievements { get; set; } = new();
         public UserProfile() { }
+
+    }
+    public class DisplayPlayer
+    {
+        public string Nickname { get; set; }
+        public string Color { get; set; }
+        public string PlayerId { get; set; }
     }
 }

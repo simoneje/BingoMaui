@@ -57,6 +57,10 @@ public partial class ProfileSettingsPage : ContentPage
             NicknameEntry.Text = nickname;
         }
     }
+    private async void OnEditProfileClicked(object sender, EventArgs e)
+    {
+        await Navigation.PushAsync(new ProfileEditPage());
+    }
 #if DEBUG
     private async void OnDevButtonClicked(object sender, EventArgs e)
     {
@@ -75,7 +79,7 @@ public partial class ProfileSettingsPage : ContentPage
         await _firestoreService.UpdateUserNicknameAsync(_userId, newNickname);
 
         // Uppdatera globalt lagrat nickname
-        App.LoggedInNickname = newNickname;
+        App.CurrentUserProfile.Nickname = newNickname;
         Preferences.Set("Nickname", newNickname);
 
         //// Bekräfta ändring
@@ -84,18 +88,7 @@ public partial class ProfileSettingsPage : ContentPage
     }
     private async void OnColorButtonClicked(object sender, EventArgs e)
     {
-        var newNickname = NicknameEntry.Text.Trim();
-        if (string.IsNullOrEmpty(newNickname))
-        {
-            await DisplayAlert("Fel", "Du måste ange ett nickname!", "OK");
-            return;
-        }
 
-        await _firestoreService.UpdateUserNicknameAsync(_userId, newNickname);
-
-        // Uppdatera globalt lagrat nickname
-        App.LoggedInNickname = newNickname;
-        Preferences.Set("Nickname", newNickname);
         if (sender is Button btn)
         {
             // Hämta färgen från knappens bakgrund
@@ -129,7 +122,7 @@ public partial class ProfileSettingsPage : ContentPage
         await _firestoreService.UpdateUserNicknameAsync(_userId, newNickname);
 
         // Uppdatera globalt lagrat nickname
-        App.LoggedInNickname = newNickname;
+        App.CurrentUserProfile.Nickname = newNickname;
         Preferences.Set("Nickname", newNickname);
         if (string.IsNullOrEmpty(_selectedColor))
         {
@@ -142,7 +135,7 @@ public partial class ProfileSettingsPage : ContentPage
         // Anropa din FirestoreService för att uppdatera färgen i databasen
         await _firestoreService.UpdatePlayerColorAsync(_currentUserProfile.UserId, _selectedColor);
 
-        await DisplayAlert("Sparat", "Din standardfärg har uppdaterats.", "OK");
+        await DisplayAlert("Sparat", "Dina Profilinställningar har sparats", "OK");
     }
 
 }

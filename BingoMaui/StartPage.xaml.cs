@@ -1,19 +1,22 @@
 using BingoMaui.Services;
+using Firebase.Auth;
 namespace BingoMaui;
 
 public partial class StartPage : ContentPage
 {
+    private readonly FirestoreService _firestoreService;
     public StartPage()
     {
         InitializeComponent();
+        _firestoreService = new FirestoreService();
 
     }
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
-
-
+        string userId = Preferences.Get("UserId", string.Empty);
+        App.CurrentUserProfile = await _firestoreService.GetUserProfileAsync(userId);
         // Använd global variabel för att visa nickname
-        WelcomeLabel.Text = $"Välkommen, {App.LoggedInNickname}!";
+        WelcomeLabel.Text = $"Välkommen, {App.CurrentUserProfile.Nickname}!";
     }
 
     private async void OnNavigateButtonClickedCreate(object sender, EventArgs e)
@@ -27,6 +30,11 @@ public partial class StartPage : ContentPage
     private async void OnNavigateButtonClickedSettings(object sender, EventArgs e)
     {
         await Navigation.PushAsync(new SettingsPage());
+    }
+    private async void OnNavigateButtonClickedProfile(object sender, EventArgs e)
+    {
+        string userId = Preferences.Get("UserId", string.Empty);
+        await Navigation.PushAsync(new ProfilePublicPage(userId));
     }
     private async void OnLogoutClicked(object sender, EventArgs e)
     {

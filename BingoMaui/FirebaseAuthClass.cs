@@ -63,8 +63,8 @@ namespace BingoMaui.Services
 
                 // Hämta användarens nickname från Firestore
                 var nickname = await _firestoreService.GetUserNicknameAsync(userId);
-                App.LoggedInNickname = GetLoggedInNickname();
-                App.LoggedInNickname = nickname;
+                App.CurrentUserProfile.Nickname = GetLoggedInNickname();
+                App.CurrentUserProfile.Nickname = nickname;
 
                 // Spara UserId och Nickname lokalt
                 Preferences.Set("UserId", userId);

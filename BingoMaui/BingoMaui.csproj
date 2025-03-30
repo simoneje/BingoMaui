@@ -117,6 +117,12 @@
 	  <Compile Update="DevToolsPage.xaml.cs">
 	    <DependentUpon>DevToolsPage.xaml</DependentUpon>
 	  </Compile>
+	  <Compile Update="ProfilePublicPage.xaml.cs">
+	    <DependentUpon>ProfilePublicPage.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="ProfileEditPage.xaml.cs">
+	    <DependentUpon>ProfileEditPage.xaml</DependentUpon>
+	  </Compile>
 	  <Compile Update="ProfileSettingsPage.xaml.cs">
 	    <DependentUpon>ProfileSettingsPage.xaml</DependentUpon>
 	  </Compile>
@@ -158,6 +164,12 @@
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="DevToolsPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="ProfilePublicPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="ProfileEditPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="ProfileSettingsPage.xaml">

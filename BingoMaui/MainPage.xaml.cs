@@ -63,7 +63,7 @@ namespace BingoMaui
                     // Spara inloggningsstatus och användarens UID i Preferences
                     Preferences.Set("IsLoggedIn", true);
                     Preferences.Set("UserId", result); // Antag att 'result' är LocalId (UID)
-
+                    App.CurrentUserProfile.UserId = result;
                     await DisplayAlert("Success", "User logged in successfully!", "OK");
 
                     // Navigera till start- eller huvudsidan

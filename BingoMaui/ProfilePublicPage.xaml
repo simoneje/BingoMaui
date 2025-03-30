@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BingoMaui.ProfilePublicPage"
+             Title="ProfilePublicPage">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="15">
+
+            <!-- Profilbild -->
+            <Frame Padding="0" CornerRadius="100" HeightRequest="150" WidthRequest="150" HorizontalOptions="Center">
+                <Image x:Name="ProfileImage" Aspect="AspectFill" HeightRequest="150" WidthRequest="150" />
+            </Frame>
+
+            <!-- Nickname -->
+            <Label x:Name="NicknameLabel"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   HorizontalTextAlignment="Center" />
+
+            <!-- Bio -->
+            <Label Text="Om mig" FontAttributes="Bold" />
+            <Label x:Name="BioLabel" LineBreakMode="WordWrap" />
+
+            <!-- Info -->
+            <Label Text="Ålder" FontAttributes="Bold" />
+            <Label x:Name="AgeLabel" />
+
+            <Label Text="Kön" FontAttributes="Bold" />
+            <Label x:Name="GenderLabel" />
+
+            <Label Text="Intressen" FontAttributes="Bold" />
+            <Label x:Name="InterestsLabel" LineBreakMode="WordWrap" />
+
+            <Label Text="Målsättning" FontAttributes="Bold" />
+            <Label x:Name="GoalLabel" LineBreakMode="WordWrap" />
+
+            <!-- TODO: Badges sektion -->
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

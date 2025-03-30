@@ -14,7 +14,8 @@
                HorizontalOptions="Center" />
         <Button
                 x:Name="CounterBtn"
-                Text="Create Bingo" 
+                Text="Create Bingo"
+                Margin="10"
                 SemanticProperties.Hint="Här får du skapa bingo"
                 Clicked="OnNavigateButtonClickedCreate"
                 HorizontalOptions="Fill" />
@@ -22,17 +23,26 @@
         <Button
                 x:Name="CounterBtn2"
                 Text="Join Bingo" 
+                Margin="10"
                 SemanticProperties.Hint="Här får du välja bingo"
                 Clicked="OnNavigateButtonClickedStart"
                 HorizontalOptions="Fill" />
         <Button
                 x:Name="CounterBtn3"
                 Text="Settings" 
+                Margin="10"
                 SemanticProperties.Hint="Här ändrar du settings"
                 Clicked="OnNavigateButtonClickedSettings"
                 HorizontalOptions="Fill" />
-        
+        <Button
+                x:Name="CounterBtn4"
+                Text="Profile Page"
+                Margin="10"
+                SemanticProperties.Hint="Här ser du din Profil"
+                Clicked="OnNavigateButtonClickedProfile"
+                HorizontalOptions="Fill" />
         <Button Text="Mina Spel"
+                Margin="10"
                 HorizontalOptions="Center"
                 VerticalOptions="Center"
                 Clicked="OnMyGamesClicked" />

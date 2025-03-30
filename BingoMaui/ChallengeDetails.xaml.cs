@@ -33,45 +33,47 @@ namespace BingoMaui
         {
             try
             {
-                var updatedList = new List<string>();
+                var playerList = new List<DisplayPlayer>();
 
-                // Kontrollera att CompletedBy är uppdaterad
                 if (_challenge.CompletedBy != null)
                 {
+                    var game = await _firestoreService.GetGameByIdAsync(_gameId);
+
                     foreach (var entry in _challenge.CompletedBy)
                     {
-                        var nickname = await _firestoreService.GetUserNicknameAsync(entry.PlayerId);
-                        updatedList.Add(nickname);
+                        if (game.PlayerInfo.TryGetValue(entry.PlayerId, out var stats))
+                        {
+                            playerList.Add(new DisplayPlayer
+                            {
+                                Nickname = stats.Nickname,
+                                Color = stats.Color,
+                                PlayerId = entry.PlayerId
+                            });
+                        }
                     }
 
-                    // Uppdatera UI
-                    CompletedPlayersList.ItemsSource = updatedList;
-
-                    // Uppdatera cache
-                    if (!App.CompletedChallengesCache.ContainsKey(_gameId))
-                        App.CompletedChallengesCache[_gameId] = new Dictionary<string, List<string>>();
-
-                    App.CompletedChallengesCache[_gameId][_challenge.Title] = updatedList;
-
-                    Console.WriteLine($"Loaded players directly from in-memory challenge.CompletedBy");
+                    CompletedPlayersList.ItemsSource = playerList;
                 }
                 else
                 {
-                    // Ingen har klarat utmaningen
                     CompletedPlayersList.ItemsSource = null;
-
-                    // Rensa även cachen om den fanns
-                    if (App.CompletedChallengesCache.ContainsKey(_gameId))
-                        App.CompletedChallengesCache[_gameId].Remove(_challenge.Title);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error loading completed players: {ex.Message}");
-                await DisplayAlert("Fel", "Kunde inte hämta spelarinformation.", "OK");
+                Console.WriteLine($"Error loading players: {ex.Message}");
+                await DisplayAlert("Fel", "Kunde inte ladda spelarinformation.", "OK");
             }
         }
+        private async void OnPlayerSelected(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.CurrentSelection.FirstOrDefault() is DisplayPlayer selected)
+            {
+                await Navigation.PushAsync(new ProfilePublicPage(selected.PlayerId));
+            }
 
+            ((CollectionView)sender).SelectedItem = null;
+        }
         private async void OnMarkAsCompletedClicked(object sender, EventArgs e)
         {
             if (_challenge.CompletedBy != null && _challenge.CompletedBy.Any(c => c.PlayerId == _currentUserId))

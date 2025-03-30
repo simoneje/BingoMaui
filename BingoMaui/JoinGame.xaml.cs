@@ -40,13 +40,13 @@ public partial class JoinGame : ContentPage
                 }
 
                 // 2. Hämta användarprofilen för att få deras färg
-                var userProfile = await _firestoreService.GetUserProfileAsync(userId);
-                App.CurrentUserProfile = userProfile;
+                // var userProfile = await _firestoreService.GetUserProfileAsync(userId);
+                var userProfile = App.CurrentUserProfile;
                 // Använd defaultfärgen från profilen, annars en fallback (t.ex. vit)
                 string userColor = userProfile?.PlayerColor ?? "#FF5733";
 
                 // 3. Lägg till spelaren i spelets lista med användarens färg
-                await _firestoreService.AddPlayerToGameAsync(game.DocumentId, userId, game.GameName, userColor);
+                await _firestoreService.AddPlayerToGameAsync(game.DocumentId, App.CurrentUserProfile.UserId, game.GameName, userColor, App.CurrentUserProfile.Nickname);
 
                 // 4. Hämta utmaningarna för spelet
                 var challenges = _firestoreService.ConvertBingoCardsToChallenges(game.Cards);

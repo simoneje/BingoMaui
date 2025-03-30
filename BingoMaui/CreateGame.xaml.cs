@@ -48,13 +48,16 @@ public partial class CreateGame : ContentPage
         var endDateUtc = EndDatePicker.Date.ToUniversalTime();
 
         // Hämta inloggad användares ID från Preferences
-        var hostId = Preferences.Get("UserId", string.Empty);
+        var hostId = App.CurrentUserProfile.UserId;
         if (string.IsNullOrEmpty(hostId))
         {
             await DisplayAlert("Fel", "Användar-ID kunde inte hittas. Logga in igen.", "OK");
             return;
         }
-        App.CurrentUserProfile = await _firestoreService.GetUserProfileAsync(hostId);
+
+        var userProfile = App.CurrentUserProfile;
+        // Använd defaultfärgen från profilen, annars en fallback (t.ex. vit)
+        string userColor = userProfile?.PlayerColor ?? "#FF5733";
         var bingoGame = new BingoGame
         {
             GameId = Guid.NewGuid().ToString(),
@@ -66,7 +69,7 @@ public partial class CreateGame : ContentPage
             InviteCode = GenerateInviteCode(),
             PlayerInfo = new Dictionary<string, PlayerStats>
             {
-                { hostId, new PlayerStats { Color = App.CurrentUserProfile.PlayerColor, Points = 0 } }
+                { hostId, new PlayerStats { Color = userColor, Points = 0, Nickname = App.CurrentUserProfile.Nickname } }
             },
             PlayerIds = new List<string> { hostId } // ✅ lägg till här
         };
@@ -80,48 +83,16 @@ public partial class CreateGame : ContentPage
         // Bekräftelse och navigering tillbaka
         await DisplayAlert("Framgång!", $"Spelet {bingoGame.GameName} har skapats med Invite Code: {bingoGame.InviteCode}", "OK");
     }
-
-    //private async Task CreateBingoGameWithInviteCodeAsync(DateTime startDate, DateTime endDate, string GameName, string HostId)
-    //{
-    //    var bingoGame = new BingoGame
-    //    {
-    //        GameId = Guid.NewGuid().ToString(), // Unikt ID
-    //        GameName = GameName,
-    //        HostId = HostId,
-    //        StartDate = startDate,
-    //        EndDate = endDate,
-    //        Status = "Active",
-    //        Cards = new List<BingoCard>(),
-    //        Players = new List<string> { HostId }, // Lägg till HostId direkt i spelarnas lista
-    //        InviteCode = GenerateInviteCode() // Generera invite-koden
-    //    };
-
-    //    var firestoreService = new FirestoreService();
-    //    await firestoreService.CreateBingoGameAsync(bingoGame);
-
-    //    Console.WriteLine($"Bingo game created with invite code: {bingoGame.InviteCode}");
-    //}
     private string GenerateInviteCode()
     {
         return Guid.NewGuid().ToString().Substring(0, 6).ToUpper(); // Exempel: "ABC123"
     }
-    /*private async void OnGetGamesClicked(object sender, EventArgs e)
-    {
-        var games = await _firestoreService.GetBingoGamesAsync();
-
-        foreach (var game in games)
-        {
-            Console.WriteLine($"Game Name: {game.GameName}, Status: {game.Status}");
-        }
-    }*/
-
     private async void OnUpdateGameStatusClicked(object sender, EventArgs e)
     {
         string gameId = "someGameId"; // Här ska du dynamiskt välja rätt GameId
         string newStatus = "Finished";
         await _firestoreService.UpdateBingoGameStatusAsync(gameId, newStatus);
     }
-
     private async void OnDeleteGameClicked(object sender, EventArgs e)
     {
         string gameId = "someGameId"; // Här ska du dynamiskt välja rätt GameId

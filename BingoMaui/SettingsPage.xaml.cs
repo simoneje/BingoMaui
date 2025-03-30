@@ -17,7 +17,7 @@ public partial class SettingsPage : ContentPage
     {
         // Rensa lagrad info och gå tillbaka till inloggningssidan
         Preferences.Clear(); // Tar bort sparad UserId och Nickname
-        App.LoggedInNickname = null;
+        App.CurrentUserProfile.Nickname = null;
 
         await Navigation.PushAsync(new StartPage());
     }

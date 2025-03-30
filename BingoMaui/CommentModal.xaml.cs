@@ -56,11 +56,8 @@ public partial class CommentModal : ContentPage
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading comments: {ex.Message}");
-        }
-        
-        
+        }          
     }
-
     private async void OnPostCommentClicked(object sender, EventArgs e)
     {
         // Kontrollera att inmatningen inte är tom

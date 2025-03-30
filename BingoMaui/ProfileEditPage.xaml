@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BingoMaui.ProfileEditPage"
+             Title="Min Profil">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+
+            <!-- Profilbild -->
+            <Frame Padding="0" CornerRadius="100" HeightRequest="150" WidthRequest="150" HorizontalOptions="Center">
+                <Image x:Name="ProfileImage" Aspect="AspectFill" HeightRequest="150" WidthRequest="150" />
+            </Frame>
+            <Button Text="Ändra profilbild" Clicked="OnChangeProfilePictureClicked" />
+
+            <!-- Biografi -->
+            <Label Text="Om mig" FontAttributes="Bold" FontSize="18" />
+            <Editor x:Name="BioEditor" Placeholder="Berätta lite om dig själv..." HeightRequest="100" />
+
+            <!-- Personlig info -->
+            <Label Text="Personlig information" FontAttributes="Bold" FontSize="18" />
+            <Label Text="Ålder" FontAttributes="Bold" />
+            <Entry x:Name="AgeEntry" Placeholder="Ålder" Keyboard="Numeric" />
+            <Label Text="Kön" FontAttributes="Bold" />
+            <Entry x:Name="GenderEntry" Placeholder="Kön" />
+            <Label Text="Intressen" FontAttributes="Bold" />
+            <Entry x:Name="InterestsEntry" Placeholder="Intressen" />
+            <Label Text="Målsättning" FontAttributes="Bold" />
+            <Entry x:Name="GoalEntry" Placeholder="Målsättning" />
+
+            <!-- Badges -->
+            <Label Text="Mina utmärkelser" FontAttributes="Bold" FontSize="18" />
+            <CollectionView x:Name="BadgesCollection" ItemsLayout="HorizontalList" HeightRequest="80">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <VerticalStackLayout Padding="5" HorizontalOptions="Center">
+                            <Image Source="{Binding Icon}" HeightRequest="40" WidthRequest="40" />
+                            <Label Text="{Binding Name}" FontSize="12" HorizontalTextAlignment="Center" />
+                        </VerticalStackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Button Text="Spara profil" BackgroundColor="Green" TextColor="White" Clicked="OnSaveProfileClicked" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

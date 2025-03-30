@@ -38,7 +38,6 @@ public partial class BingoBricka : ContentPage
             var updatedChallenges = _firestoreService.ConvertBingoCardsToChallenges(game.Cards);
             _challenges = updatedChallenges;
             App.ShouldRefreshChallenges = false;
-            await DisplayAlert("uppdaterat","uppdaterat challenges","OK");
         }
         InviteCodeLabel.Text = _inviteCode; // Uppdatera InviteCode på UI
         PopulateBingoGrid(_challenges);
@@ -57,137 +56,124 @@ public partial class BingoBricka : ContentPage
     {
         try
         {
-            // Kontrollera att BingoGrid inte är null
-            if (BingoGrid == null)
+            if (BingoGrid == null || challenges == null || challenges.Count == 0)
             {
-                Console.WriteLine("Error: BingoGrid är null.");
-                return;
-            }
-
-            // Kontrollera att challenges-listan inte är null
-            if (challenges == null || challenges.Count == 0)
-            {
-                Console.WriteLine("Error: Challenge-listan är null eller tom.");
+                Console.WriteLine("BingoGrid är null eller inga utmaningar.");
                 await Application.Current.MainPage.DisplayAlert("Fel", "Inga utmaningar att visa.", "OK");
                 return;
             }
 
             BingoGrid.Children.Clear();
-            int index = 0;
+            BingoGrid.RowDefinitions.Clear();
+            BingoGrid.ColumnDefinitions.Clear();
 
-            for (int row = 0; row < 5; row++)
+            int totalItems = challenges.Count;
+            int gridSize = (int)Math.Ceiling(Math.Sqrt(totalItems)); // t.ex. 10 för 100 rutor
+
+            // Dynamiskt definiera rader & kolumner
+            for (int i = 0; i < gridSize; i++)
             {
-                for (int col = 0; col < 5; col++)
+                BingoGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+                BingoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+            }
+
+            for (int i = 0; i < totalItems; i++)
+            {
+                var challenge = challenges[i];
+                int row = i / gridSize;
+                int col = i % gridSize;
+
+                var tileGrid = new Grid
                 {
-                    if (index >= challenges.Count)
-                        break;
-
-                    var challenge = challenges[index];
-
-                    // Skapa en Grid (eller Frame) som ersätter Button
-                    var tileGrid = new Grid
-                    {
-                        BackgroundColor = Colors.Purple,
-                        Padding = 5,
-                        RowDefinitions =
-                    {
-                        new RowDefinition { Height = GridLength.Star }, // Titel
-                        new RowDefinition { Height = GridLength.Auto }, // Cirklar
-                    }
-                    };
-
-                    // --- Rad 1: Titel ---
-                    var titleLabel = new Label
-                    {
-                        Text = challenge.Title ?? "Okänd utmaning",
-                        FontSize = CalculateFontSize(challenge.Title),
-                        HorizontalOptions = LayoutOptions.CenterAndExpand,
-                        VerticalOptions = LayoutOptions.CenterAndExpand,
-                        TextColor = Colors.White,
-                        LineBreakMode = LineBreakMode.WordWrap
-                    };
-                    tileGrid.Add(titleLabel, 0, 0);
-
-                    // --- Rad 2: Färgprickar (StackLayout) ---
-                    var dotsLayout = new StackLayout
-                    {
-                        Orientation = StackOrientation.Horizontal,
-                        HorizontalOptions = LayoutOptions.Center,
-                        VerticalOptions = LayoutOptions.Center,
-                        Spacing = 2
-                    };
-
-                    // Om du vill begränsa antalet cirklar, kan du göra:
-                    // int maxDots = 5; 
-                    // var completedCount = challenge.CompletedBy?.Count ?? 0;
-                    // int displayedDots = Math.Min(completedCount, maxDots);
-
-                    if (challenge.CompletedBy != null)
-                    {
-                        // Exempel: visa alla CompletedBy som cirklar
-                        foreach (var completedInfo in challenge.CompletedBy)
-                        {
-                            // Om du har UserColor som hex-sträng, använd den här
-                            var colorHex = string.IsNullOrWhiteSpace(completedInfo.UserColor)
-                                           ? "#FFFFFF" // fallback-färg
-                                           : completedInfo.UserColor;
-
-                            var dot = new BoxView
-                            {
-                                WidthRequest = 10,
-                                HeightRequest = 10,
-                                CornerRadius = 5, // hälften av bredd/höjd => cirkel
-                                BackgroundColor = Color.FromArgb(colorHex),
-                                Margin = new Thickness(2)
-                            };
-                            dotsLayout.Children.Add(dot);
-                        }
-
-                        // Om du vill visa "..." när fler än x spelare klarat utmaningen:
-                        // if (completedCount > maxDots)
-                        // {
-                        //     dotsLayout.Children.Add(new Label { Text = "...", TextColor = Colors.White });
-                        // }
-                    }
-
-                    tileGrid.Add(dotsLayout, 0, 1);
-
-                    // --- Lägg till en TapGestureRecognizer för klick ---
-                    var tapGesture = new TapGestureRecognizer();
-                    tapGesture.Tapped += async (sender, args) =>
-                    {
-                        try
-                        {
-                            if (string.IsNullOrEmpty(_gameId))
-                            {
-                                Console.WriteLine("Error: _gameId är null eller tom.");
-                                return;
-                            }
-
-                            var challengeDetailsPage = new ChallengeDetails(_gameId, challenge);
-                            await Navigation.PushAsync(challengeDetailsPage);
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Error navigating to ChallengeDetails: {ex.Message}");
-                            await Application.Current.MainPage.DisplayAlert("Fel", "Ett fel inträffade vid navigering till utmaningsdetaljer.", "OK");
-                        }
-                    };
-                    tileGrid.GestureRecognizers.Add(tapGesture);
-
-                    // Lägg till "cellen" i BingoGrid
-                    BingoGrid.Add(tileGrid, col, row);
-                    index++;
-
+                    BackgroundColor = Colors.Purple,
+                    Padding = 4,
+                    RowDefinitions =
+                {
+                    new RowDefinition { Height = GridLength.Star },   // Titel
+                    new RowDefinition { Height = GridLength.Auto },   // Prickar
                 }
+                };
+
+                // Titel
+                var titleLabel = new Label
+                {
+                    Text = challenge.Title ?? "Okänd utmaning",
+                    FontSize = CalculateFontSize(challenge.Title),
+                    TextColor = Colors.White,
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Center,
+                    LineBreakMode = LineBreakMode.WordWrap,
+                    HorizontalTextAlignment = TextAlignment.Center
+                };
+                tileGrid.Add(titleLabel, 0, 0);
+
+                // Prickar
+                var dotsLayout = new StackLayout
+                {
+                    Orientation = StackOrientation.Horizontal,
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Center,
+                    Spacing = 2
+                };
+
+                if (challenge.CompletedBy != null && challenge.CompletedBy.Count > 0)
+                {
+                    const int maxDots = 5;
+                    int shownDots = Math.Min(maxDots, challenge.CompletedBy.Count);
+
+                    for (int j = 0; j < shownDots; j++)
+                    {
+                        var completedInfo = challenge.CompletedBy[j];
+                        var dotColor = string.IsNullOrWhiteSpace(completedInfo.UserColor) ? "#FFFFFF" : completedInfo.UserColor;
+
+                        dotsLayout.Children.Add(new BoxView
+                        {
+                            WidthRequest = 10,
+                            HeightRequest = 10,
+                            CornerRadius = 5,
+                            BackgroundColor = Color.FromArgb(dotColor),
+                            Margin = new Thickness(1)
+                        });
+                    }
+
+                    // Lägg till en "..."-indikator om fler än maxDots
+                    if (challenge.CompletedBy.Count > maxDots)
+                    {
+                        dotsLayout.Children.Add(new Label
+                        {
+                            Text = "...",
+                            TextColor = Colors.White,
+                            FontSize = 10,
+                            VerticalOptions = LayoutOptions.Center,
+                            Margin = new Thickness(2, 0)
+                        });
+                    }
+                }
+
+                tileGrid.Add(dotsLayout, 0, 1);
+
+                // Tap Gesture
+                var tapGesture = new TapGestureRecognizer();
+                tapGesture.Tapped += async (sender, args) =>
+                {
+                    if (!string.IsNullOrEmpty(_gameId))
+                    {
+                        var challengeDetailsPage = new ChallengeDetails(_gameId, challenge);
+                        await Navigation.PushAsync(challengeDetailsPage);
+                    }
+                };
+                tileGrid.GestureRecognizers.Add(tapGesture);
+
+                BingoGrid.Add(tileGrid, col, row);
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error populating BingoGrid: {ex.Message}");
-            await Application.Current.MainPage.DisplayAlert("Fel", "Ett fel inträffade när bingobrickan skulle fyllas.", "OK");
+            Console.WriteLine($"Fel vid generering av bingobricka: {ex.Message}");
+            await Application.Current.MainPage.DisplayAlert("Fel", "Kunde inte bygga bingobrickan.", "OK");
         }
     }
+
     private async void OnGameSettingsClicked(object sender, EventArgs e)
     {
         try
@@ -209,14 +195,6 @@ public partial class BingoBricka : ContentPage
         }
     }
 
-    //private async Task LoadBingoGridAsync(string gameId)
-    //{
-    //    // Hämta utmaningarna från Firebase
-    //    var challenges = await _firestoreService.GetChallengesForGameAsync(gameId);
-
-    //    // Fyll bingobrickan med utmaningarna
-    //    PopulateBingoGrid(challenges);
-    //}
     private double CalculateFontSize(string text)
     {
         if (text.Length > 30)
@@ -226,7 +204,6 @@ public partial class BingoBricka : ContentPage
         else
             return 12; // Kort text
     }
-
     private async void OnShowLeaderboardClicked(object sender, EventArgs e)
     {
         // Navigera till LeaderboardPage och skicka med _gameId

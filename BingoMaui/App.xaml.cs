@@ -3,7 +3,6 @@ namespace BingoMaui
 {
     public partial class App : Application
     {
-        public static string LoggedInNickname { get; set; }
         public static UserProfile CurrentUserProfile { get; set; }
         public static Dictionary<string, Dictionary<string, List<string>>> CompletedChallengesCache { get; private set; } =
             new Dictionary<string, Dictionary<string, List<string>>>();
@@ -15,9 +14,6 @@ namespace BingoMaui
             LogCredentialFileAsync();
             // Ladda nickname vid app-start
             var authService = new FirebaseAuthService();
-            LoggedInNickname = authService.GetLoggedInNickname();
-            Console.WriteLine(LoggedInNickname);
-
             // Kontrollera inloggningsstatus
             bool isLoggedIn = Preferences.Get("IsLoggedIn", false);
 
@@ -92,7 +88,7 @@ namespace BingoMaui
         }
         public static void ClearLoggedInNickname()
         {
-            LoggedInNickname = string.Empty;
+            CurrentUserProfile.Nickname = string.Empty;
         }
     }
 }
