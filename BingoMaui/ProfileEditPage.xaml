@@ -11,7 +11,8 @@
             <Frame Padding="0" CornerRadius="100" HeightRequest="150" WidthRequest="150" HorizontalOptions="Center">
                 <Image x:Name="ProfileImage" Aspect="AspectFill" HeightRequest="150" WidthRequest="150" />
             </Frame>
-            <Button Text="Ändra profilbild" Clicked="OnChangeProfilePictureClicked" />
+            <Button Text="Ladda upp profilbild" Clicked="OnChangeProfilePictureClicked"/>
+            
 
             <!-- Biografi -->
             <Label Text="Om mig" FontAttributes="Bold" FontSize="18" />

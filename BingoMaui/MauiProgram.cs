@@ -1,4 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
+using Microsoft.Maui;
+using Microsoft.Maui.Hosting;
+using CommunityToolkit.Maui;
 
 namespace BingoMaui
 {
@@ -9,6 +12,7 @@ namespace BingoMaui
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
+                .UseMauiCommunityToolkit() // 👈 Du kan lägga till andra också
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

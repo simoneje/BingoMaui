@@ -1,10 +1,12 @@
 using BingoMaui;
 using BingoMaui.Services;
+using System.Windows.Input;
 namespace BingoMaui;
 public partial class CommentModal : ContentPage
 {
     private readonly string _gameId;
     private readonly FirestoreService _firestoreService;
+    public ICommand NavigateToPublicProfileCommand { get; }
     public Command RefreshCommand { get; }
 
     public CommentModal(string gameId)

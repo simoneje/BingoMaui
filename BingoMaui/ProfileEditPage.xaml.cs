@@ -60,26 +60,34 @@ namespace BingoMaui
         {
             try
             {
-                await DisplayAlert("Finns ej", "Inte implementerat än", "OK");
-                //var result = await FilePicker.PickAsync(new PickOptions
-                //{
-                //    PickerTitle = "Välj en profilbild",
-                //    FileTypes = FilePickerFileType.Images
-                //});
+                var result = await FilePicker.PickAsync(new PickOptions
+                {
+                    PickerTitle = "Välj en profilbild",
+                    FileTypes = FilePickerFileType.Images
+                });
 
-                //if (result != null)
-                //{
-                //    var stream = await result.OpenReadAsync();
-                //    var downloadUrl = await _firestoreService.UploadProfileImageAsync(_profile.UserId, stream);
-                //    _profile.ProfileImageUrl = downloadUrl;
-                //    ProfileImage.Source = ImageSource.FromUri(new Uri(downloadUrl));
-                //}
-                
+                if (result != null)
+                {
+
+                    using var stream = await result.OpenReadAsync();
+                    var downloadUrl = await _firestoreService.UploadProfileImageAsync(stream, App.CurrentUserProfile.UserId);
+
+                    if (!string.IsNullOrEmpty(downloadUrl))
+                    {
+                        // Uppdatera bilden direkt i UI
+                        ProfileImage.Source = ImageSource.FromUri(new Uri(downloadUrl));
+
+                        // Uppdatera lokal modell
+                        App.CurrentUserProfile.ProfileImageUrl = downloadUrl;
+
+                        // Uppdatera Firestore
+                        await _firestoreService.UpdateUserProfileAsync(App.CurrentUserProfile);
+                    }
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Fel vid uppladdning av profilbild: {ex.Message}");
-                await DisplayAlert("Fel", "Kunde inte ladda upp profilbild.", "OK");
+                await DisplayAlert("Fel", $"Kunde inte ladda upp bilden: {ex.Message}", "OK");
             }
         }
 

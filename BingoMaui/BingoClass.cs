@@ -92,7 +92,13 @@ namespace BingoMaui
         public string GameId { get; set; }
 
         [FirestoreProperty]
+        public string UserId { get; set; }
+
+        [FirestoreProperty]
         public string Nickname { get; set; }
+
+        [FirestoreProperty]
+        public string PlayerColor { get; set; }
 
         [FirestoreProperty]
         public string Message { get; set; }

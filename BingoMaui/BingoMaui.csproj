@@ -79,10 +79,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="CommunityToolkit.Maui" Version="5.4.0" />
 		<PackageReference Include="Firebase.Auth" Version="1.0.0" />
 		<PackageReference Include="FirebaseAdmin" Version="3.1.0" />
 		<PackageReference Include="Google.Apis.Auth" Version="1.69.0" />
 		<PackageReference Include="Google.Cloud.Firestore" Version="3.9.0" />
+		<PackageReference Include="Google.Cloud.Storage.V1" Version="4.11.0" />
 		<PackageReference Include="Grpc.Core" Version="2.46.6" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
@@ -116,6 +118,9 @@
 	  </Compile>
 	  <Compile Update="DevToolsPage.xaml.cs">
 	    <DependentUpon>DevToolsPage.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="ImageCropPage.xaml.cs">
+	    <DependentUpon>ImageCropPage.xaml</DependentUpon>
 	  </Compile>
 	  <Compile Update="ProfilePublicPage.xaml.cs">
 	    <DependentUpon>ProfilePublicPage.xaml</DependentUpon>
@@ -164,6 +169,9 @@
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="DevToolsPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="ImageCropPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="ProfilePublicPage.xaml">

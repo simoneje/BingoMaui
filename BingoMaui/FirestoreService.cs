@@ -1,5 +1,7 @@
 ﻿using Firebase.Auth;
 using Google.Cloud.Firestore;
+using System.Net.Http.Json;
+using System.Text.Json;
 // using AndroidX.Annotations;
 
 namespace BingoMaui.Services
@@ -561,6 +563,17 @@ namespace BingoMaui.Services
             foreach (var doc in querySnapshot.Documents)
             {
                 var comment = doc.ConvertTo<Comment>();
+
+                // Slå upp spelarens färg från PlayerInfo
+                if (game.PlayerInfo.TryGetValue(comment.UserId, out var playerStats))
+                {
+                    comment.PlayerColor = playerStats.Color;
+                }
+                else
+                {
+                    comment.PlayerColor = "#FFFFFF"; // fallback-färg om något saknas
+                }
+
                 comments.Add(comment);
             }
 
@@ -731,7 +744,6 @@ namespace BingoMaui.Services
                 Console.WriteLine($"Error updating nickname across system: {ex.Message}");
             }
         }
-
         public async Task<Dictionary<string, int>> GetLeaderboardAsync(string gameId)
         {
             // Hämta spelet
@@ -794,29 +806,42 @@ namespace BingoMaui.Services
             }
         }
         //FUNKTION FÖR BETALTJÄNST FIREBASE
-        //public async Task<string> UploadProfileImageAsync(string userId, Stream imageStream)
-        //{
-        //    try
-        //    {
-        //        // FirebaseStorage kräver ett separat paket, t.ex. Plugin.Firebase.Storage (eller REST via HttpClient)
-        //        var storage = new FirebaseStorage("your-app.appspot.com"); // byt till din Storage URL
+        public async Task<string> UploadProfileImageAsync(Stream imageStream, string fileName)
+        {
+            using var httpClient = new HttpClient();
 
-        //        var imageName = $"profile_images/{userId}_{Guid.NewGuid()}.jpg";
+            // Förbered innehållet
+            var content = new MultipartFormDataContent();
+            var streamContent = new StreamContent(imageStream);
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
 
-        //        var imageUrl = await storage
-        //            .Child(imageName)
-        //            .PutAsync(imageStream);
+            content.Add(streamContent, "file", fileName);
 
-        //        Console.WriteLine($"✅ Profilbild uppladdad: {imageUrl}");
-        //        return imageUrl;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.WriteLine($"❌ Error uploading profile image: {ex.Message}");
-        //        return null;
-        //    }
-        //}
+            try
+            {
+                var response = await httpClient.PostAsync("https://backendbingoapi.onrender.com/api/upload", content);
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadFromJsonAsync<UploadResponse>();
+                    return responseContent?.Url;
+                }
+                else
+                {
+                    var errorMsg = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Upload failed: {response.StatusCode}, {errorMsg}");
+                    throw new Exception("Kunde inte ladda upp bilden.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Upload error: {ex.Message}");
+                throw;
+            }
+        }
 
-
+        public class UploadResponse
+        {
+            public string Url { get; set; }
+        }
     }
 }

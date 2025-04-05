@@ -1,0 +1,53 @@
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BingoMaui.ImageCropPage"
+             BackgroundColor="Black">
+
+    <Grid>
+        <!-- 1. Bild som användaren kan flytta och zooma -->
+        <ScrollView x:Name="ImageScroll" Orientation="Both">
+
+            <Grid>
+                <Image x:Name="ImageToCrop"
+                        Aspect="AspectFit" />
+
+                <!-- Beskärningsruta -->
+                <Frame 
+                    BackgroundColor="Transparent"
+                    BorderColor="White"
+                    WidthRequest="250"
+                    HeightRequest="250"
+                    CornerRadius="0"
+                    Padding="0"
+                    HasShadow="False"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"/>
+            </Grid>
+        </ScrollView>
+
+        <!-- 2. Mask som visar beskärningsytan (t.ex. kvadrat i mitten) -->
+        <Frame 
+            BackgroundColor="Transparent"
+            BorderColor="White"
+            WidthRequest="250"
+            HeightRequest="250"
+            CornerRadius="0"
+            Padding="0"
+            HasShadow="False"
+            HorizontalOptions="Center"
+            VerticalOptions="Center"/>
+
+        <!-- 3. Beskär-knapp -->
+        <!--<Button Text="Beskär" 
+                Clicked="OnCropButtonClicked"
+                VerticalOptions="End"
+                HorizontalOptions="Center"
+                Margin="20"/>
+        <Button Text="Bekräfta beskärning"
+                Clicked="OnConfirmCropClicked"
+                BackgroundColor="Green"
+                TextColor="White"
+                Margin="20"/>-->
+
+    </Grid>
+</ContentPage>
