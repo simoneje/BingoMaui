@@ -6,6 +6,7 @@ using System.Text;
 using static Google.Rpc.Context.AttributeContext.Types;
 using Firebase.Auth;
 using BingoMaui.Services;
+using BingoMaui.Services.Backend;
 
 
 
@@ -49,40 +50,46 @@ namespace BingoMaui
         {
             var email = EmailEntry.Text;
             var password = PasswordEntry.Text;
-            
 
             try
             {
-                // Anropa FirebaseAuthService för att logga in användaren
                 var authService = new FirebaseAuthService();
-                var LoggedInNickname = authService.GetLoggedInNickname();
-                var result = await authService.LoginUserAsync(email, password);
+                var token = await authService.LoginUserAsync(email, password); // 🔁 Returnerar ID-token
 
-                if (!result.StartsWith("Error"))
+                if (!token.StartsWith("Error"))
                 {
-                    // Spara inloggningsstatus och användarens UID i Preferences
-                    Preferences.Set("IsLoggedIn", true);
-                    Preferences.Set("UserId", result); // Antag att 'result' är LocalId (UID)
-                    App.CurrentUserProfile.UserId = result;
-                    await DisplayAlert("Success", "User logged in successfully!", "OK");
+                    // 🔐 Spara token lokalt
+                    await SecureStorage.SetAsync("IdToken", token);
+                    await SecureStorage.SetAsync("IsLoggedIn", "true");
+                    await BackendServices.UpdateTokenAsync(token);
 
-                    // Navigera till start- eller huvudsidan
-                    Application.Current.MainPage = new NavigationPage(new StartPage());
+                    // 🔄 Testa token mot backend
+                    var api = BackendServices.MiscService; // ✅
+
+                    var backendOk = await api.TestPingAsync();
+
+                    if (backendOk)
+                    {
+                        await DisplayAlert("Success", "Du är inloggad och ansluten till Game Servern!", "OK");
+
+                        // Navigera till StartPage om allt är OK
+                        Application.Current.MainPage = new NavigationPage(new StartPage());
+                    }
+                    else
+                    {
+                        await DisplayAlert("Fel", "Inloggning lyckades, men anslutning till backend misslyckades (401?)", "OK");
+                    }
                 }
                 else
                 {
-                    await DisplayAlert("Error", result, "OK");
+                    await DisplayAlert("Error", token, "OK");
                 }
             }
             catch (Exception ex)
             {
-                await DisplayAlert("Error", $"An error occurred: {ex.Message}", "OK");
+                await DisplayAlert("Error", $"Ett fel uppstod: {ex.Message}", "OK");
             }
         }
-
-
-
-
         private async Task CopyServiceAccountKeyAsync()
         {
             string fileName = "bingomaui28990.json";
@@ -107,60 +114,68 @@ namespace BingoMaui
             Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", destPath);
         }
 
-        private async void OnTestFirestoreClicked(object sender, EventArgs e)
+        //private async void OnTestFirestoreClicked(object sender, EventArgs e)
+        //{
+        //    try
+        //    {
+        //        // Kontrollera om miljövariabeln är korrekt inställd
+        //        string credentialsPath = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
+        //        if (string.IsNullOrEmpty(credentialsPath))
+        //        {
+        //            Console.WriteLine("GOOGLE_APPLICATION_CREDENTIALS is not set!");
+        //            await DisplayAlert("Error", "GOOGLE_APPLICATION_CREDENTIALS is not set!", "OK");
+        //            return;
+        //        }
+
+        //        Console.WriteLine($"GOOGLE_APPLICATION_CREDENTIALS is set to: {credentialsPath}");
+
+        //        // Testa att skapa en Firestore-databasanslutning
+        //        FirestoreDb db = FirestoreDb.Create("bingomaui28990");
+        //        Console.WriteLine("Firestore connection succeeded!");
+
+        //        await DisplayAlert("Success", "Connected to Firestore successfully!", "OK");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine($"Firestore connection failed: {ex.Message}");
+        //        await DisplayAlert("Error", $"Firestore connection failed: {ex.Message}", "OK");
+        //        string credentialsPath = Path.Combine(FileSystem.AppDataDirectory, "Credentials", "bingomaui28990.json");
+        //        if (File.Exists(credentialsPath))
+        //        {
+        //            Console.WriteLine($"Credential file exists at: {credentialsPath}");
+        //        }
+        //        else
+        //        {
+        //            Console.WriteLine($"Credential file NOT found at: {credentialsPath}");
+        //        }
+        //        if (File.Exists(credentialsPath))
+        //        {
+        //            string fileContent = File.ReadAllText(credentialsPath);
+        //            Console.WriteLine($"File content length: {fileContent.Length}");
+        //            Console.WriteLine($"File content: {fileContent}");
+        //        }
+        //        else
+        //        {
+        //            Console.WriteLine("Credential file not found!");
+        //        }
+        //        string googleCredentials = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
+        //        if (!string.IsNullOrEmpty(googleCredentials))
+        //        {
+        //            Console.WriteLine($"GOOGLE_APPLICATION_CREDENTIALS is set to: {googleCredentials}");
+        //        }
+        //        else
+        //        {
+        //            Console.WriteLine("GOOGLE_APPLICATION_CREDENTIALS is not set!");
+        //        }
+        //    }
+        //}
+        private async void TestCredentialButton_Clicked(object sender, EventArgs e)
         {
-            try
-            {
-                // Kontrollera om miljövariabeln är korrekt inställd
-                string credentialsPath = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
-                if (string.IsNullOrEmpty(credentialsPath))
-                {
-                    Console.WriteLine("GOOGLE_APPLICATION_CREDENTIALS is not set!");
-                    await DisplayAlert("Error", "GOOGLE_APPLICATION_CREDENTIALS is not set!", "OK");
-                    return;
-                }
+            var path = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
+            await DisplayAlert("Path", path ?? "NULL", "OK");
 
-                Console.WriteLine($"GOOGLE_APPLICATION_CREDENTIALS is set to: {credentialsPath}");
-
-                // Testa att skapa en Firestore-databasanslutning
-                FirestoreDb db = FirestoreDb.Create("bingomaui28990");
-                Console.WriteLine("Firestore connection succeeded!");
-
-                await DisplayAlert("Success", "Connected to Firestore successfully!", "OK");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Firestore connection failed: {ex.Message}");
-                await DisplayAlert("Error", $"Firestore connection failed: {ex.Message}", "OK");
-                string credentialsPath = Path.Combine(FileSystem.AppDataDirectory, "Credentials", "bingomaui28990.json");
-                if (File.Exists(credentialsPath))
-                {
-                    Console.WriteLine($"Credential file exists at: {credentialsPath}");
-                }
-                else
-                {
-                    Console.WriteLine($"Credential file NOT found at: {credentialsPath}");
-                }
-                if (File.Exists(credentialsPath))
-                {
-                    string fileContent = File.ReadAllText(credentialsPath);
-                    Console.WriteLine($"File content length: {fileContent.Length}");
-                    Console.WriteLine($"File content: {fileContent}");
-                }
-                else
-                {
-                    Console.WriteLine("Credential file not found!");
-                }
-                string googleCredentials = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
-                if (!string.IsNullOrEmpty(googleCredentials))
-                {
-                    Console.WriteLine($"GOOGLE_APPLICATION_CREDENTIALS is set to: {googleCredentials}");
-                }
-                else
-                {
-                    Console.WriteLine("GOOGLE_APPLICATION_CREDENTIALS is not set!");
-                }
-            }
+            bool exists = File.Exists(path);
+            await DisplayAlert("Exists?", exists.ToString(), "OK");
         }
     }
 }

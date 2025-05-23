@@ -1,9 +1,10 @@
-using Firebase;
+ï»¿using Firebase;
 using BingoMaui.Services;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
+using System.Text.Json;
 namespace BingoMaui;
 
 public partial class BingoBricka : ContentPage
@@ -12,45 +13,64 @@ public partial class BingoBricka : ContentPage
     private double _startScale = 1;
     private double _xOffset = 0;
     private double _yOffset = 0;
-    private string _inviteCode;
-    private readonly FirestoreService _firestoreService;
     private string _gameId;
     private List<Challenge> _challenges;
-    private List<Comment> _comments = new List<Comment>();
-    public BingoBricka(string gameId, List<Challenge> challenges)
+    private string _inviteCode;
+    public BingoBricka(string gameId)
     {
         InitializeComponent();
-        _firestoreService = new FirestoreService(); // Skapa en instans av tjänstklassen
-        _gameId = gameId; // ID för specifika spelet som visas
-        _challenges = challenges;
+        _gameId = gameId;
+        _challenges = new();
         _inviteCode = string.Empty;
     }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        if (App.ShouldRefreshChallenges)
+
+        BingoGame cachedGame = null;
+
+        // ðŸ§  1. LÃ¤s frÃ¥n cache
+        var cachedJson = Preferences.Get($"cachedGame_{_gameId}", null);
+        if (!string.IsNullOrEmpty(cachedJson))
         {
-            var game = await _firestoreService.GetGameByIdAsync(_gameId);
-            if (game != null)
+            cachedGame = JsonSerializer.Deserialize<BingoGame>(cachedJson);
+            if (cachedGame != null)
             {
-                _inviteCode = game.InviteCode;
+                _inviteCode = cachedGame.InviteCode;
+                _challenges = Converters.ConvertBingoCardsToChallenges(cachedGame.Cards);
+                InviteCodeLabel.Text = _inviteCode;
+                PopulateBingoGrid(_challenges);
             }
-            var updatedChallenges = _firestoreService.ConvertBingoCardsToChallenges(game.Cards);
-            _challenges = updatedChallenges;
-            App.ShouldRefreshChallenges = false;
         }
-        InviteCodeLabel.Text = _inviteCode; // Uppdatera InviteCode på UI
-        PopulateBingoGrid(_challenges);
-        if (!BingoGrid.GestureRecognizers.OfType<PinchGestureRecognizer>().Any())
+
+        try
         {
-            var pinchGesture = new PinchGestureRecognizer();
-            pinchGesture.PinchUpdated += OnPinchUpdated;
+            // ðŸ”„ 2. HÃ¤mta fÃ¤rsk data i bakgrunden
+            var latestGame = await BackendServices.GameService.GetGameByIdAsync(_gameId);
+            if (latestGame != null)
+            {
+                var shouldRefresh = cachedGame == null ||
+                                    cachedGame.Cards?.Count != latestGame.Cards?.Count ||
+                                    !cachedGame.Cards.Select(c => c.Title).SequenceEqual(latestGame.Cards.Select(c => c.Title));
 
-            BingoGrid.GestureRecognizers.Add(pinchGesture); // Lägg till gesten på bingobrickan
+                if (shouldRefresh)
+                {
+                    _challenges = Converters.ConvertBingoCardsToChallenges(latestGame.Cards);
+                    PopulateBingoGrid(_challenges);
+                }
+
+                _inviteCode = latestGame.InviteCode;
+                InviteCodeLabel.Text = _inviteCode;
+
+                // ðŸ’¾ Uppdatera cache
+                Preferences.Set($"cachedGame_{_gameId}", JsonSerializer.Serialize(latestGame));
+            }
         }
-
-        
-        //await LoadComments();
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ðŸ”Œ Fel vid hÃ¤mtning frÃ¥n backend: {ex.Message}");
+        }
     }
     private async void PopulateBingoGrid(List<Challenge> challenges)
     {
@@ -58,7 +78,7 @@ public partial class BingoBricka : ContentPage
         {
             if (BingoGrid == null || challenges == null || challenges.Count == 0)
             {
-                Console.WriteLine("BingoGrid är null eller inga utmaningar.");
+                Console.WriteLine("BingoGrid Ã¤r null eller inga utmaningar.");
                 await Application.Current.MainPage.DisplayAlert("Fel", "Inga utmaningar att visa.", "OK");
                 return;
             }
@@ -68,7 +88,7 @@ public partial class BingoBricka : ContentPage
             BingoGrid.ColumnDefinitions.Clear();
 
             int totalItems = challenges.Count;
-            int gridSize = (int)Math.Ceiling(Math.Sqrt(totalItems)); // t.ex. 10 för 100 rutor
+            int gridSize = (int)Math.Ceiling(Math.Sqrt(totalItems)); // t.ex. 10 fÃ¶r 100 rutor
 
             // Dynamiskt definiera rader & kolumner
             for (int i = 0; i < gridSize; i++)
@@ -97,7 +117,7 @@ public partial class BingoBricka : ContentPage
                 // Titel
                 var titleLabel = new Label
                 {
-                    Text = challenge.Title ?? "Okänd utmaning",
+                    Text = challenge.Title ?? "OkÃ¤nd utmaning",
                     FontSize = CalculateFontSize(challenge.Title),
                     TextColor = Colors.White,
                     HorizontalOptions = LayoutOptions.Center,
@@ -136,7 +156,7 @@ public partial class BingoBricka : ContentPage
                         });
                     }
 
-                    // Lägg till en "..."-indikator om fler än maxDots
+                    // LÃ¤gg till en "..."-indikator om fler Ã¤n maxDots
                     if (challenge.CompletedBy.Count > maxDots)
                     {
                         dotsLayout.Children.Add(new Label
@@ -178,29 +198,28 @@ public partial class BingoBricka : ContentPage
     {
         try
         {
-            var game = await _firestoreService.GetGameByIdAsync(_gameId);
+            var game = await BackendServices.GameService.GetGameByIdAsync(_gameId);
             if (game == null)
             {
-                await DisplayAlert("Fel", "Kunde inte hämta spelet.", "OK");
+                await DisplayAlert("Fel", "Kunde inte hÃ¤mta spelet.", "OK");
                 return;
             }
 
-            // Navigera till GameSettingsPage med PlayerInfo
             await Navigation.PushAsync(new GameSettings(_gameId, game.PlayerInfo));
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Fel vid navigering till inställningar: {ex.Message}");
-            await DisplayAlert("Fel", "Kunde inte öppna inställningar för spelet.", "OK");
+            Console.WriteLine($"Fel vid navigering till instÃ¤llningar: {ex.Message}");
+            await DisplayAlert("Fel", "Kunde inte Ã¶ppna instÃ¤llningar fÃ¶r spelet.", "OK");
         }
     }
 
     private double CalculateFontSize(string text)
     {
         if (text.Length > 30)
-            return 8; // Väldigt lång text
+            return 8; // VÃ¤ldigt lÃ¥ng text
         else if (text.Length > 20)
-            return 10; // Medellång text
+            return 10; // MedellÃ¥ng text
         else
             return 12; // Kort text
     }
@@ -224,11 +243,11 @@ public partial class BingoBricka : ContentPage
         }
         else if (e.Status == GestureStatus.Running)
         {
-            // Räkna ut ny skalning
+            // RÃ¤kna ut ny skalning
             double currentScale = Math.Max(1, _startScale * e.Scale);
             BingoGrid.Scale = currentScale;
 
-            // Håll offset inom området
+            // HÃ¥ll offset inom omrÃ¥det
             var deltaX = (_xOffset - e.ScaleOrigin.X) * (currentScale - 1) * BingoGrid.Width;
             var deltaY = (_yOffset - e.ScaleOrigin.Y) * (currentScale - 1) * BingoGrid.Height;
 

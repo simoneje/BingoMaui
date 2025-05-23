@@ -1,35 +1,29 @@
 using BingoMaui.Services;
 using BingoMaui;
-using System;
-using System.Collections.Generic;
-using Microsoft.Maui.Controls;
+using BingoMaui.Services.Backend;
 
 namespace BingoMaui
 {
     public partial class ChallengeDetails : ContentPage
     {
-        private readonly Challenge _challenge; // Utmaningen vi visar
-        private readonly FirestoreService _firestoreService;
+        private readonly Challenge _challenge;
         private readonly string _currentUserId;
-        private readonly string _gameId; // Spelets ID
+        private readonly string _gameId;
 
         public ChallengeDetails(string gameId, Challenge challenge)
         {
             InitializeComponent();
-            _firestoreService = new FirestoreService();
             _challenge = challenge;
-            _currentUserId = Preferences.Get("UserId", string.Empty); // Hämta inloggad användares ID
+            _currentUserId = Preferences.Get("UserId", string.Empty);
             _gameId = gameId;
-            
-            // Ladda spelare som klarat utmaningen
-            LoadCompletedPlayers();
-            // Visa data
+
             ChallengeTitleLabel.Text = challenge.Title;
             ChallengeDescriptionLabel.Text = challenge.Description;
 
-            
+            _ = LoadCompletedPlayers();
         }
-        private async void LoadCompletedPlayers()
+
+        private async Task LoadCompletedPlayers()
         {
             try
             {
@@ -37,7 +31,7 @@ namespace BingoMaui
 
                 if (_challenge.CompletedBy != null)
                 {
-                    var game = await _firestoreService.GetGameByIdAsync(_gameId);
+                    var game = await BackendServices.GameService.GetGameByIdAsync(_gameId);
 
                     foreach (var entry in _challenge.CompletedBy)
                     {
@@ -65,6 +59,7 @@ namespace BingoMaui
                 await DisplayAlert("Fel", "Kunde inte ladda spelarinformation.", "OK");
             }
         }
+
         private async void OnPlayerSelected(object sender, SelectionChangedEventArgs e)
         {
             if (e.CurrentSelection.FirstOrDefault() is DisplayPlayer selected)
@@ -74,6 +69,7 @@ namespace BingoMaui
 
             ((CollectionView)sender).SelectedItem = null;
         }
+
         private async void OnMarkAsCompletedClicked(object sender, EventArgs e)
         {
             if (_challenge.CompletedBy != null && _challenge.CompletedBy.Any(c => c.PlayerId == _currentUserId))
@@ -82,74 +78,71 @@ namespace BingoMaui
                 return;
             }
 
-            // Kontrollera att nödvändiga parametrar finns
             if (string.IsNullOrEmpty(_gameId) || string.IsNullOrEmpty(_challenge.Title))
             {
                 await DisplayAlert("Fel", "Kunde inte identifiera spelet eller utmaningen.", "OK");
                 return;
             }
 
-            // Markera utmaningen som klarad
-            await _firestoreService.MarkChallengeAsCompletedAsync(_gameId, _challenge.Title, _currentUserId);
-
-            // Uppdatera UI
-            if (_challenge.CompletedBy == null)
+            var success = await BackendServices.ChallengeService.MarkChallengeAsCompletedAsync(_gameId, _challenge.Title);
+            if (!success)
             {
-                _challenge.CompletedBy = new List<CompletedInfo>();
+                await DisplayAlert("Fel", "Det gick inte att markera utmaningen som klarad.", "OK");
+                return;
             }
 
-            if (!_challenge.CompletedBy.Any(c => c.PlayerId == _currentUserId))
+            var updatedGame = await BackendServices.GameService.GetGameByIdAsync(_gameId);
+            if (updatedGame == null)
             {
-                var game = await _firestoreService.GetGameByIdAsync(_gameId);
-                var currentUserColor = game.PlayerInfo[_currentUserId].Color;
-                // Här sätter du den aktuella användarens färg – ersätt med din egen logik för att hämta en anpassad färg.
-
-                _challenge.CompletedBy.Add(new CompletedInfo
-                {
-                    PlayerId = _currentUserId,
-                    UserColor = currentUserColor
-                });
+                await DisplayAlert("Fel", "Kunde inte hämta spelet efter uppdatering.", "OK");
+                return;
             }
 
-            // Uppdatera App.CompletedChallengesCache
-            if (!App.CompletedChallengesCache.ContainsKey(_gameId))
+            var updatedChallenges = Converters.ConvertBingoCardsToChallenges(updatedGame.Cards);
+            var updatedCard = updatedChallenges.FirstOrDefault(c => c.Title == _challenge.Title);
+
+            if (updatedCard == null)
             {
-                App.CompletedChallengesCache[_gameId] = new Dictionary<string, List<string>>();
-            }
-            if (!App.CompletedChallengesCache[_gameId].ContainsKey(_challenge.Title))
-            {
-                App.CompletedChallengesCache[_gameId][_challenge.Title] = new List<string>();
+                await DisplayAlert("Fel", "Kunde inte hitta uppdaterad utmaning i spelet.", "OK");
+                return;
             }
 
-            // Hämta användarens nickname (du kan ha en egen logik för detta)
-            var nickname = await _firestoreService.GetUserNicknameAsync(_currentUserId);
-            if (!App.CompletedChallengesCache[_gameId][_challenge.Title].Contains(nickname))
-            {
-                App.CompletedChallengesCache[_gameId][_challenge.Title].Add(nickname);
-            }
-            LoadCompletedPlayers();
-
+            _challenge.CompletedBy = updatedCard.CompletedBy;
+            await LoadCompletedPlayers();
             await DisplayAlert("Framgång!", "Utmaningen är markerad som klarad!", "OK");
         }
+
         private async void OnUnmarkCompletedClicked(object sender, EventArgs e)
         {
             var confirm = await DisplayAlert("Bekräfta", "Vill du verkligen ta bort din klarmarkering?", "Ja", "Avbryt");
             if (!confirm) return;
 
-            await _firestoreService.UnmarkChallengeAsCompletedAsync(_gameId, _challenge.Title, _currentUserId);
+            var success = await BackendServices.ChallengeService.UnmarkChallengeAsCompletedAsync(_gameId, _challenge.Title);
 
-            // Uppdatera lokal modell
-            _challenge.CompletedBy?.RemoveAll(c => c.PlayerId == _currentUserId);
-
-            // Rensa från cache
-            if (App.CompletedChallengesCache.ContainsKey(_gameId) &&
-                App.CompletedChallengesCache[_gameId].ContainsKey(_challenge.Title))
+            if (!success)
             {
-                var nickname = await _firestoreService.GetUserNicknameAsync(_currentUserId);
-                App.CompletedChallengesCache[_gameId][_challenge.Title].Remove(nickname);
+                await DisplayAlert("Fel", "Det gick inte att avmarkera utmaningen.", "OK");
+                return;
             }
 
-            LoadCompletedPlayers();
+            var updatedGame = await BackendServices.GameService.GetGameByIdAsync(_gameId);
+            if (updatedGame == null)
+            {
+                await DisplayAlert("Fel", "Kunde inte hämta spelet efter uppdatering.", "OK");
+                return;
+            }
+
+            var updatedChallenges = Converters.ConvertBingoCardsToChallenges(updatedGame.Cards);
+            var updatedCard = updatedChallenges.FirstOrDefault(c => c.Title == _challenge.Title);
+
+            if (updatedCard == null)
+            {
+                await DisplayAlert("Fel", "Kunde inte hitta uppdaterad utmaning i spelet.", "OK");
+                return;
+            }
+
+            _challenge.CompletedBy = updatedCard.CompletedBy;
+            await LoadCompletedPlayers();
             await DisplayAlert("Uppdaterat", "Din klarmarkering har tagits bort.", "OK");
         }
     }

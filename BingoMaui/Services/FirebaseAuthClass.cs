@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Firebase.Auth;
 using System;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 
 namespace BingoMaui.Services
 {
@@ -19,10 +19,15 @@ namespace BingoMaui.Services
         {
             _authProvider = new FirebaseAuthProvider(new FirebaseConfig("AIzaSyCuGa8fDtOtjPUc8wQV0kJ1YFi21AY3nr8"));
             _firestoreService = new FirestoreService();
+
         }
         public string GetLoggedInNickname()
         {
-            return Preferences.Get("Nickname", "Anonym Användare"); // Default till "Anonym Användare" om inget finns
+            if(App.CurrentUserProfile.Nickname == null)
+            {
+                return "Anonym";
+            }
+            return App.CurrentUserProfile.Nickname; // Default till "Anonym Användare" om inget finns
         }
 
 
@@ -62,16 +67,22 @@ namespace BingoMaui.Services
                 var userId = auth.User.LocalId;
 
                 // Hämta användarens nickname från Firestore
-                var nickname = await _firestoreService.GetUserNicknameAsync(userId);
-                App.CurrentUserProfile.Nickname = GetLoggedInNickname();
-                App.CurrentUserProfile.Nickname = nickname;
+                //var nickname = await _firestoreService.GetUserNicknameAsync(userId);
+                //App.CurrentUserProfile.Nickname = GetLoggedInNickname();
+                //App.CurrentUserProfile.Nickname = nickname;
 
                 // Spara UserId och Nickname lokalt
                 Preferences.Set("UserId", userId);
-                Preferences.Set("Nickname", nickname);
-                Console.WriteLine($"Nickname to save: {nickname}");
+                if (App.CurrentUserProfile == null)
+                    App.CurrentUserProfile = new UserProfile();
 
-                return userId;
+                App.CurrentUserProfile.UserId = userId;
+                //Preferences.Set("Nickname", nickname);
+                //Console.WriteLine($"Nickname to save: {nickname}");
+
+                var idToken = await auth.GetFreshAuthAsync(); // Hämtar färsk token
+                return idToken.FirebaseToken;
+
             }
             catch (Exception ex)
             {

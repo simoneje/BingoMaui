@@ -8,7 +8,6 @@ public partial class GameSettings : ContentPage
     private string _playerId;
     private Dictionary<string, PlayerStats> _playerInfo;
     private string _selectedColor;
-    private readonly FirestoreService _firestoreService;
 
     public GameSettings(string gameId, Dictionary<string, PlayerStats> playerInfo)
     {
@@ -16,15 +15,17 @@ public partial class GameSettings : ContentPage
         _gameId = gameId;
         _playerId = Preferences.Get("UserId", string.Empty);
         _playerInfo = playerInfo;
-        _firestoreService = new FirestoreService();
 
         GameNameLabel.Text = $"Spel-ID: {gameId}";
         var AvailableColors = new List<string> { "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF" };
 
         if (_playerInfo.TryGetValue(_playerId, out var stats))
             _selectedColor = stats.Color;
+
         ColorPicker.ItemsSource = AvailableColors;
+        ColorPicker.SelectedItem = _selectedColor; // Förifylld
     }
+
     private async void OnSaveClicked(object sender, EventArgs e)
     {
         if (string.IsNullOrEmpty(_selectedColor))
@@ -33,12 +34,19 @@ public partial class GameSettings : ContentPage
             return;
         }
 
-        // Uppdatera i Firestore
-        await _firestoreService.UpdatePlayerColorInGameAsync(_gameId, _playerId, _selectedColor);
+        var success = await BackendServices.GameService.UpdatePlayerColorInGameAsync(_gameId, _selectedColor);
 
-        await DisplayAlert("Klart!", "Din färg har uppdaterats för detta spel.", "OK");
-        await Navigation.PopAsync(); // Gå tillbaka till brickan
+        if (success)
+        {
+            await DisplayAlert("Klart!", "Din färg har uppdaterats för detta spel.", "OK");
+            await Navigation.PopAsync(); // Gå tillbaka
+        }
+        else
+        {
+            await DisplayAlert("Fel", "Det gick inte att uppdatera färgen.", "OK");
+        }
     }
+
     private void OnColorSelected(object sender, SelectionChangedEventArgs e)
     {
         if (e.CurrentSelection.FirstOrDefault() is string selected)
@@ -47,6 +55,7 @@ public partial class GameSettings : ContentPage
             Console.WriteLine($"Vald färg: {_selectedColor}");
         }
     }
+
     private void OnColorTapped(object sender, EventArgs e)
     {
         if (sender is Frame frame && frame.BackgroundColor is Color color)

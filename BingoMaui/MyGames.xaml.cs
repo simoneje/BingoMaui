@@ -1,16 +1,18 @@
 using BingoMaui.Services;
+using BingoMaui.Services.Backend;
 namespace BingoMaui;
 
 public partial class MyGames : ContentPage
 {
-    private readonly FirestoreService _firestoreService;
+    private readonly BackendGameService _gameService;
+
     private string _userId;
     
 
     public MyGames()
     {
         InitializeComponent();
-        _firestoreService = new FirestoreService();
+        _gameService = BackendServices.GameService;
         _userId = Preferences.Get("UserId", string.Empty); // Hämtar inloggad användares ID
     }
 
@@ -24,7 +26,8 @@ public partial class MyGames : ContentPage
     {
         // Hämta alla spel där användaren är med
 
-        var games = await _firestoreService.GetGamesForUserAsync(_userId);
+        var games = await _gameService.GetGamesForUserAsync();
+
         GamesList.ItemsSource = games;
         
     }
@@ -33,19 +36,28 @@ public partial class MyGames : ContentPage
         var button = (Button)sender;
         var gameId = button.CommandParameter.ToString();
         var selectedGame = button.BindingContext as BingoGame;
-        // Hämta spelet från Firestore
-        var game = await _firestoreService.GetGameByIdAsync(gameId);
+        var game = AccountServices.LoadGameFromCache(gameId);
+
+        if (game == null)
+        {
+            // Hämta från backend och cacha
+            game = await BackendServices.GameService.GetGameByIdAsync(gameId);
+            if (game != null)
+                AccountServices.SaveGameToCache(game);
+        }
+
 
         if (game == null || game.Cards == null || game.Cards.Count == 0)
         {
             await DisplayAlert("Fel", "Inga bingobrickor hittades för detta spel.", "OK");
             return;
         }
-        
+
         // Konvertera BingoCards till Challenges
-        var challenges = _firestoreService.ConvertBingoCardsToChallenges(game.Cards);
+        var challenges = Converters.ConvertBingoCardsToChallenges(game.Cards);
+
         App.ShouldRefreshChallenges = true;
         // Navigera till BingoBricka med gameId och konverterade utmaningar
-        await Navigation.PushAsync(new BingoBricka(gameId, challenges));
+        await Navigation.PushAsync(new BingoBricka(gameId));
     }
 }

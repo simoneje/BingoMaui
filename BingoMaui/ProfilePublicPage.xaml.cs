@@ -2,6 +2,7 @@ using System;
 using Microsoft.Maui.Controls;
 using BingoMaui.Services;
 using System.Threading.Tasks;
+using BingoMaui.Services.Backend;
 
 namespace BingoMaui
 {
@@ -20,7 +21,7 @@ namespace BingoMaui
         {
             base.OnAppearing();
             ProfileImage.Source = "dotnet_bot.png";
-            var profile = await _firestoreService.GetUserProfileAsync(_userId);
+            var profile = await BackendServices.MiscService.GetUserProfileFromApiAsync();
             if (profile != null)
             {
                 NicknameLabel.Text = profile.Nickname;

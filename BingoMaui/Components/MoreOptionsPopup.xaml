@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<toolkit:Popup
+    x:Class="BingoMaui.Components.MoreOptionsPopup"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    Color="Transparent"
+    CanBeDismissedByTappingOutsideOfPopup="True">
+
+    <Frame  
+        x:Name="PopupContent"
+        BackgroundColor="White"
+
+        Padding="20"
+        HorizontalOptions="Center"
+        VerticalOptions="Center">
+        <!-- Större elevation = djupare skugga -->
+        <StackLayout Spacing="15">
+            <Button Text="👍 Lägg till reaktion" Clicked="OnReactClicked" />
+            <Button Text="🗑️ Ta bort kommentar" Clicked="OnDeleteClicked" />
+            <Button Text="❌ Stäng" Clicked="OnCloseClicked" />
+        </StackLayout>
+    </Frame>
+
+</toolkit:Popup>

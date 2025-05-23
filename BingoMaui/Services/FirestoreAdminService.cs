@@ -1,8 +1,7 @@
-﻿using BingoMaui.Services;
-using Firebase.Auth;
+﻿using Firebase.Auth;
 using Google.Cloud.Firestore;
 
-namespace BingoMaui
+namespace BingoMaui.Services
 {
     class FirestoreAdminService
     {

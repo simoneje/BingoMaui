@@ -1,4 +1,5 @@
 using BingoMaui.Services;
+using BingoMaui.Services.Backend;
 using Firebase.Auth;
 namespace BingoMaui;
 
@@ -14,7 +15,9 @@ public partial class StartPage : ContentPage
     protected override async void OnAppearing()
     {
         string userId = Preferences.Get("UserId", string.Empty);
-        App.CurrentUserProfile = await _firestoreService.GetUserProfileAsync(userId);
+        if (App.CurrentUserProfile == null)
+            App.CurrentUserProfile = new UserProfile();
+        App.CurrentUserProfile = await BackendServices.MiscService.GetUserProfileFromApiAsync();
         // Använd global variabel för att visa nickname
         WelcomeLabel.Text = $"Välkommen, {App.CurrentUserProfile.Nickname}!";
     }
@@ -46,10 +49,12 @@ public partial class StartPage : ContentPage
         {
             // Rensa inloggningsstatus
             Preferences.Clear();
-            App.ClearLoggedInNickname(); // Använd den nya metoden;
-
+            App.ClearLoggedInNickname();
+;
             // Rensa den lokala cachen
             App.CompletedChallengesCache.Clear();
+
+            AccountServices.ClearGameCacheOnLogout();
 
             Console.WriteLine("Cache cleared upon logout.");
 

@@ -7,44 +7,47 @@ namespace BingoMaui;
 
 public partial class Leaderboard : ContentPage
 {
-    private readonly FirestoreService _firestoreService;
     private string _gameId;
     private ObservableCollection<LeaderboardEntry> _leaderboardEntries = new ObservableCollection<LeaderboardEntry>();
     public Leaderboard(string gameId)
     {
         InitializeComponent();
         _gameId = gameId;
-        _firestoreService = new FirestoreService();
     }
     protected override async void OnAppearing()
     {
         base.OnAppearing();
         await LoadLeaderboardAsync();
     }
-    
+
 
     private async Task LoadLeaderboardAsync()
     {
-        var leaderboard = await _firestoreService.GetLeaderboardAsync(_gameId);
-        var sortedEntries = leaderboard
-            .OrderByDescending(kvp => kvp.Value)
-            .Select(async kvp =>
+        var game = await BackendServices.GameService.GetGameByIdAsync(_gameId);
+        if (game == null || game.PlayerInfo == null)
+        {
+            await DisplayAlert("Fel", "Kunde inte ladda spelet.", "OK");
+            return;
+        }
+
+        var sortedEntries = game.PlayerInfo
+            .OrderByDescending(p => p.Value.Points)
+            .Select(p => new LeaderboardEntry
             {
-                var nickname = await _firestoreService.GetUserNicknameAsync(kvp.Key);
-                return new LeaderboardEntry { Nickname = nickname, Points = kvp.Value };
-            });
+                Nickname = p.Value.Nickname,
+                Points = p.Value.Points
+            })
+            .ToList();
 
-        var entries = await Task.WhenAll(sortedEntries);
-
-        // Rensa den observerbara samlingen och lägg in nya värden
         _leaderboardEntries.Clear();
-        foreach (var entry in entries)
+        foreach (var entry in sortedEntries)
         {
             _leaderboardEntries.Add(entry);
         }
 
         LeaderboardListView.ItemsSource = _leaderboardEntries;
     }
+
 
     public class LeaderboardEntry
     {

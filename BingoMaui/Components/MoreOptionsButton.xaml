@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:components="clr-namespace=BingoMaui.Components"
+             x:Class="BingoMaui.Components.MoreOptionsButton"
+             x:Name="Root">
+    <ImageButton Source="dots_vertical.png"
+                 BackgroundColor="Transparent"
+                 WidthRequest="24"
+                 HeightRequest="24"
+                 Clicked="OnClicked" />
+</ContentView>

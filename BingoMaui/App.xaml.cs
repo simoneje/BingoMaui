@@ -1,91 +1,78 @@
 ﻿using BingoMaui.Services;
+using BingoMaui.Services.Backend;
+using Microsoft.Maui.Storage;
+
 namespace BingoMaui
 {
     public partial class App : Application
     {
         public static UserProfile CurrentUserProfile { get; set; }
-        public static Dictionary<string, Dictionary<string, List<string>>> CompletedChallengesCache { get; private set; } =
-            new Dictionary<string, Dictionary<string, List<string>>>();
+
+        public static Dictionary<string, Dictionary<string, List<string>>> CompletedChallengesCache { get; private set; } = new();
+
         public static bool ShouldRefreshChallenges { get; set; } = false;
+
         public App()
         {
             InitializeComponent();
-            CopyServiceAccountKeyAsync();
-            LogCredentialFileAsync();
-            // Ladda nickname vid app-start
-            var authService = new FirebaseAuthService();
-            // Kontrollera inloggningsstatus
-            bool isLoggedIn = Preferences.Get("IsLoggedIn", false);
-
-            if (isLoggedIn)
-            {
-                // Om användaren är inloggad, skicka till StartPage
-                MainPage = new NavigationPage(new StartPage());
-                
-            }
-            else
-            {
-                // Om användaren inte är inloggad, sätt AppShell som huvudnavigering                
-                MainPage = new AppShell();
-            }
+            MainPage = new SplashPage(); // Tillfällig sida medan init körs
         }
-        private async Task LogCredentialFileAsync()
-        {
-            string filePath = Path.Combine(FileSystem.AppDataDirectory, "credentials", "bingomaui28990.json");
 
-            if (File.Exists(filePath))
-            {
-                var fileContent = await File.ReadAllTextAsync(filePath);
-                Console.WriteLine($"JSON Key Content: {fileContent}");
-            }
-            else
-            {
-                Console.WriteLine("Credential file not found!");
-            }
-        }
-        private async Task CopyServiceAccountKeyAsync()
+        public static async Task InitializeAsync()
         {
-            string fileName = "bingomaui28990.json";
-            string destPath = Path.Combine(FileSystem.AppDataDirectory, "credentials", fileName);
-
             try
             {
-                if (!Directory.Exists(Path.Combine(FileSystem.AppDataDirectory, "credentials")))
-                {
-                    Directory.CreateDirectory(Path.Combine(FileSystem.AppDataDirectory, "credentials"));
-                }
+                Task.Run(async () => await CopyServiceAccountKeyAsync()).Wait();
 
-                if (!File.Exists(destPath))
-                {
-                    using (var stream = await FileSystem.OpenAppPackageFileAsync(fileName))
+                await LogCredentialFileAsync();
 
-                    {
-                        //Tog bort async från stream.CopyTo(outputStream);
-                        using (var outputStream = File.Create(destPath))
-                        {
-                            stream.CopyTo(outputStream);
-                            Console.WriteLine($"File copied to: {destPath}");
-                        }
-                    }
-                }
+                // 🔒 Hämta användarinfo från SecureStorage
+                var userId = await SecureStorage.GetAsync("UserId");
+                var isLoggedInStr = await SecureStorage.GetAsync("IsLoggedIn");
+                var isLoggedIn = bool.TryParse(isLoggedInStr, out var result) && result;
 
-                Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", destPath);
-                Console.WriteLine("Credential file copied and environment variable set.");
-                if (File.Exists(destPath))
+                if (isLoggedIn && !string.IsNullOrEmpty(userId))
                 {
-                    var fileInfo = new FileInfo(destPath);
-                    Console.WriteLine($"Credential file exists. Size: {fileInfo.Length} bytes");
-                }
-                else
-                {
-                    Console.WriteLine("Credential file not found after copying!");
+                    // Ladda backend-token
+                    await BackendServices.UpdateTokenAsync();
+
+                    CurrentUserProfile = await BackendServices.MiscService.GetUserProfileFromApiAsync();
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error copying credential file: {ex.Message}");
+                Console.WriteLine($"[App Init Error] {ex.Message}");
             }
         }
+
+        private static async Task CopyServiceAccountKeyAsync()
+        {
+            string fileName = "bingomaui28990.json";
+            string destPath = Path.Combine(FileSystem.AppDataDirectory, "credentials", fileName);
+
+            if (!Directory.Exists(Path.Combine(FileSystem.AppDataDirectory, "credentials")))
+                Directory.CreateDirectory(Path.Combine(FileSystem.AppDataDirectory, "credentials"));
+
+            if (!File.Exists(destPath))
+            {
+                using var stream = await FileSystem.OpenAppPackageFileAsync(fileName);
+                using var outputStream = File.Create(destPath);
+                await stream.CopyToAsync(outputStream);
+            }
+
+            Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", destPath);
+        }
+
+        private static async Task LogCredentialFileAsync()
+        {
+            string path = Path.Combine(FileSystem.AppDataDirectory, "credentials", "bingomaui28990.json");
+
+            if (File.Exists(path))
+                Console.WriteLine($"Credential file found. Size: {new FileInfo(path).Length} bytes");
+            else
+                Console.WriteLine("Credential file NOT found.");
+        }
+
         public static void ClearLoggedInNickname()
         {
             CurrentUserProfile.Nickname = string.Empty;

@@ -5,6 +5,7 @@ using Microsoft.Maui.Controls;
 using BingoMaui.Services;
 using Microsoft.Maui.Storage;
 using Microsoft.Maui;
+using BingoMaui.Services.Backend;
 
 namespace BingoMaui
 {
@@ -23,7 +24,7 @@ namespace BingoMaui
             base.OnAppearing();
             ProfileImage.Source = "dotnet_bot.png";
             var userId = Preferences.Get("UserId", string.Empty);
-            _profile = await _firestoreService.GetUserProfileAsync(userId);
+            _profile = await BackendServices.MiscService.GetUserProfileFromApiAsync();
 
             if (_profile != null)
             {

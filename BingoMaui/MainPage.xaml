@@ -24,9 +24,15 @@
                 SemanticProperties.HeadingLevel="Level2"
                 SemanticProperties.Description="Welcome to dot net Multi platform App U I" />
 
-            <Button
+            <!--<Button
                 Text="Test Firestore Connection"
                 Clicked="OnTestFirestoreClicked"
+                VerticalOptions="Center"
+                HorizontalOptions="Center" />-->
+
+            <Button
+                Text="Test Firestore Auth"
+                Clicked="TestCredentialButton_Clicked"
                 VerticalOptions="Center"
                 HorizontalOptions="Center" />
             <Entry x:Name="EmailEntry" Placeholder="Email" />

@@ -1,176 +1,183 @@
 ﻿using Google.Cloud.Firestore;
+using Plugin.CloudFirestore.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace BingoMaui
 {
-
-    [FirestoreData]
     public class BingoGame
     {
-        [FirestoreProperty]
-        public string DocumentId { get; set; } // Unikt ID för Firebase Documentet
-        [FirestoreProperty]
-        public string GameId { get; set; } // Unikt ID för spelet
+        [JsonPropertyName("documentId")]
+        public string DocumentId { get; set; }
 
-        [FirestoreProperty]
-        public string GameName { get; set; } // Namn på spelet
-
-        [FirestoreProperty]
-        public string HostId { get; set; } // Vem som skapade spelet
-
-        [FirestoreProperty]
-        public List<string> PlayerIds { get; set; } = new();
-
-        [FirestoreProperty]
-        public Dictionary<string, PlayerStats> PlayerInfo { get; set; } = new(); // Leaderboard
-
-        [FirestoreProperty]
-        public string Status { get; set; } // Status, t.ex. "Active", "Finished"
-
-        [FirestoreProperty]
-        public DateTime StartDate { get; set; } // Startdatum för spelet
-
-        [FirestoreProperty]
-        public DateTime EndDate { get; set; } // Slutdatum för spelet
-
-        [FirestoreProperty]
-        public List<BingoCard> Cards { get; set; } // Alla bingokort i spelet
-
-        [FirestoreProperty]
-        public string InviteCode { get; set; } // Invite code för spelet 
-
-        public BingoGame() { }
-    }
-
-    [FirestoreData]
-    public class BingoCard
-    {
-        [FirestoreProperty]
-        public string CardId { get; set; } // Unikt ID för kortet
-
-        [FirestoreProperty]
-        public string Title { get; set; } // Titel för bingorutan
-
-        [FirestoreProperty]
-        public string Description { get; set; } // Beskrivning av utmaningen
-
-        [FirestoreProperty]
-        public string Category { get; set; } // Kategori för utmaningen
-
-        [FirestoreProperty]
-        public List<CompletedInfo> CompletedBy { get; set; } = new();
-
-        public BingoCard() { }
-    }
-    [FirestoreData]
-    public class Challenge
-    {
-        [FirestoreProperty]
-        public string ChallengeId { get; set; } // Unik ID för utmaningen
-
-        [FirestoreProperty]
-        public string Title { get; set; }       // Titel på utmaningen
-
-        [FirestoreProperty]
-        public string Description { get; set; } // Beskrivning av utmaningen
-
-        [FirestoreProperty]
-        public string Category { get; set; }   // Kategori, tex "Träning", "Hälsa"
-
-        // Uppdaterad property med CompletedInfo istället för strängar
-        [FirestoreProperty]
-        public List<CompletedInfo> CompletedBy { get; set; } = new List<CompletedInfo>();
-    }
-    [FirestoreData]
-    public class Comment
-    {
-        [FirestoreProperty]
+        [JsonPropertyName("gameId")]
         public string GameId { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("gameName")]
+        public string GameName { get; set; }
+
+        [JsonPropertyName("hostId")]
+        public string HostId { get; set; }
+
+        [JsonPropertyName("playerIds")]
+        public List<string> PlayerIds { get; set; } = new();
+
+        [JsonPropertyName("playerInfo")]
+        public Dictionary<string, PlayerStats> PlayerInfo { get; set; } = new();
+
+        [JsonPropertyName("status")]
+        public string Status { get; set; }
+
+        [JsonPropertyName("startDate")]
+        public DateTime StartDate { get; set; }
+
+        [JsonPropertyName("endDate")]
+        public DateTime EndDate { get; set; }
+
+        [JsonPropertyName("cards")]
+        public List<BingoCard> Cards { get; set; }
+
+        [JsonPropertyName("inviteCode")]
+        public string InviteCode { get; set; }
+    }
+    public class BingoCard
+    {
+        [JsonPropertyName("cardId")]
+        public string CardId { get; set; }
+
+        [JsonPropertyName("title")]
+        public string Title { get; set; }
+
+        [JsonPropertyName("description")]
+        public string Description { get; set; }
+
+        [JsonPropertyName("category")]
+        public string Category { get; set; }
+
+        [JsonPropertyName("completedBy")]
+        public List<CompletedInfo> CompletedBy { get; set; } = new();
+    }
+    public class Challenge
+    {
+        [JsonPropertyName("challengeId")]
+        public string ChallengeId { get; set; }
+
+        [JsonPropertyName("title")]
+        public string Title { get; set; }
+
+        [JsonPropertyName("description")]
+        public string Description { get; set; }
+
+        [JsonPropertyName("category")]
+        public string Category { get; set; }
+
+        [JsonPropertyName("completedBy")]
+        public List<CompletedInfo> CompletedBy { get; set; } = new();
+    }
+    public class Comment
+    {
+        [JsonPropertyName("commentId")]
+        public string CommentId { get; set; }
+
+        [JsonPropertyName("gameId")]
+        public string GameId { get; set; }
+
+        [JsonPropertyName("userId")]
         public string UserId { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("nickname")]
         public string Nickname { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("playerColor")]
         public string PlayerColor { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("message")]
         public string Message { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("reactions")]
+        public Dictionary<string, List<string>> Reactions { get; set; } = new();
+
+        [JsonPropertyName("timestamp")]
         public DateTime Timestamp { get; set; }
 
-        [FirestoreProperty]
+        // Dessa två används för visning i klienten, inte för API
+        [JsonIgnore]
         public string FormattedTime { get; set; }
 
-        public Comment() { } // Parameterlös konstruktor krävs för Firestore
+        [JsonIgnore]
+        public string ReactionsDisplay => Reactions != null
+            ? string.Join("  ", Reactions.Select(r => $"{r.Key} {r.Value.Count}"))
+            : "";
     }
-    [FirestoreData]
     public class CompletedInfo
     {
-        [FirestoreProperty]
-        public string PlayerId { get; set; }  // Spelarens unika ID
+        [JsonPropertyName("playerId")]
+        public string PlayerId { get; set; }
 
-        [FirestoreProperty]
-        public string UserColor { get; set; } // Exempelvis "#FF0000" för röd
+        [JsonPropertyName("userColor")]
+        public string UserColor { get; set; }
 
-        public CompletedInfo() { }
+        [JsonPropertyName("nickname")]
+        public string Nickname { get; set; }
+
+        [JsonPropertyName("proofImageUrl")]
+        public string? ProofImageUrl { get; set; }
+
+        [JsonPropertyName("witnessName")]
+        public string? WitnessName { get; set; }
     }
+
     // Klass för PlayerInfo Dict
-    [FirestoreData]
     public class PlayerStats
     {
-        [FirestoreProperty]
-        public int Points { get; set; }  // Spelarens unika ID
+        [JsonPropertyName("points")]
+        public int Points { get; set; }
 
-        [FirestoreProperty]
-        public string Color { get; set; } // Exempelvis "#FF0000" för röd
+        [JsonPropertyName("color")]
+        public string Color { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("nickname")]
         public string Nickname { get; set; }
-
-        public PlayerStats() { }
     }
-    [FirestoreData]
+
+
     public class UserProfile
     {
-        [FirestoreProperty]
+        [JsonPropertyName("userId")]
         public string UserId { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("email")]
         public string Email { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("nickname")]
         public string Nickname { get; set; }
 
-        [FirestoreProperty]
-        public string PlayerColor { get; set; }  // t.ex. "#FF5733"
+        [JsonPropertyName("playerColor")]
+        public string PlayerColor { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("profileImageUrl")]
         public string ProfileImageUrl { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("bio")]
         public string Bio { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("age")]
         public int? Age { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("gender")]
         public string Gender { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("interests")]
         public string Interests { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("goal")]
         public string Goal { get; set; }
 
-        [FirestoreProperty]
+        [JsonPropertyName("achievements")]
         public List<string> Achievements { get; set; } = new();
         public UserProfile() { }
 

@@ -1,5 +1,7 @@
 ﻿using Firebase.Auth;
 using Google.Cloud.Firestore;
+using Newtonsoft.Json;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 // using AndroidX.Annotations;
@@ -52,127 +54,6 @@ namespace BingoMaui.Services
             }
 
         }
-
-        // Lägg till ett nytt BingoGame
-        public async Task CreateBingoGameAsync(BingoGame bingoGame)
-        {
-            try
-            {
-                var collection = _firestoreDb.Collection("BingoGames");
-                await collection.AddAsync(bingoGame);
-                Console.WriteLine($"Bingo game {bingoGame.GameName} created successfully.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error creating game: {ex.Message}");
-            }
-        }
-
-
-
-        // Hämta alla BingoGames
-        /*public async Task<List<BingoGame>> GetBingoGamesAsync()
-        {
-            var games = new List<BingoGame>();
-
-            try
-            {
-                var collection = _firestoreDb.Collection("bingoGames");
-                var querySnapshot = await collection.GetSnapshotAsync();
-
-                foreach (var document in querySnapshot.Documents)
-                {
-                    var game = document.ToObject<BingoGame>();
-                    games.Add(game);
-                }
-
-                Console.WriteLine($"Fetched {games.Count} games.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error fetching games: {ex.Message}");
-            }
-
-            return games;
-        }*/
-
-        // Uppdatera status på ett BingoGame
-        public async Task UpdateBingoGameStatusAsync(string gameId, string newStatus)
-        {
-            try
-            {
-                var documentRef = _firestoreDb.Collection("BingoGames").Document(gameId);
-                await documentRef.UpdateAsync("Status", newStatus);
-                Console.WriteLine($"Bingo game {gameId} status updated to {newStatus}.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating game status: {ex.Message}");
-            }
-        }
-
-        // Ta bort ett BingoGame
-        public async Task DeleteBingoGameAsync(string gameId)
-        {
-            try
-            {
-                var documentRef = _firestoreDb.Collection("BingoGames").Document(gameId);
-                await documentRef.DeleteAsync();
-                Console.WriteLine($"Bingo game {gameId} deleted successfully.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error deleting game: {ex.Message}");
-            }
-        }
-        public async Task<BingoGame> GetGameByInviteCodeAsync(string inviteCode)
-        {
-            var collection = _firestoreDb.Collection("BingoGames");
-            var query = collection.WhereEqualTo("InviteCode", inviteCode);
-            var querySnapshot = await query.GetSnapshotAsync();
-
-            if (querySnapshot.Documents.Count > 0)
-            {
-                try
-                {
-                    var document = querySnapshot.Documents[0];
-                    var bingoGame = document.ConvertTo<BingoGame>();
-                    bingoGame.DocumentId = document.Id; // Tilldela dokumentets ID
-
-                    return bingoGame;
-                }
-                catch(Exception ex)
-                {
-                    Console.WriteLine($"🔥 Error parsing BingoGame from Firestore: {ex.Message}");
-                    throw;
-                }
-
-            }
-
-            return null; // Om spelet inte hittades
-        }
-        public async Task AddPlayerToGameAsync(string documentId, string playerId, string gameName, string playerColor, string nickname)
-        {
-            var docRef = _firestoreDb.Collection("BingoGames").Document(documentId);
-
-            // Skapa eller uppdatera PlayerInfo
-            var updateData = new Dictionary<string, object>
-            {
-                { $"PlayerInfo.{playerId}", new Dictionary<string, object>
-                    {
-                        { "Color", playerColor },
-                        { "Points", 0 },
-                        { "Nickname", nickname }
-                    }
-                },// ✅ Lägg till användaren i PlayerIds-arrayen
-                { "PlayerIds", FieldValue.ArrayUnion(playerId) } // ✅ Slås ihop här
-            };
-            
-            // Uppdatera Firestore med merge-liknande uppdatering
-            await docRef.UpdateAsync(updateData);
-
-            Console.WriteLine($"✅ Player {playerId} added to game '{gameName}' in PlayerInfo with color {playerColor} and 0 points.");
-        }
         public async Task<List<Dictionary<string, object>>> GetRandomChallengesAsync(int count)
         {
             var challengesCollection = _firestoreDb.Collection("Challenges");
@@ -191,59 +72,7 @@ namespace BingoMaui.Services
             var random = new Random();
             return allChallenges.OrderBy(x => random.Next()).Take(Math.Min(count, allChallenges.Count)).ToList();
         }
-        public async Task<List<BingoGame>> GGetGamesForUserAsync(string userId)
-        {
-            var gamesRef = _firestoreDb.Collection("BingoGames");
-            var snapshot = await gamesRef.GetSnapshotAsync();
 
-            var games = new List<BingoGame>();
-            foreach (var doc in snapshot.Documents)
-            {
-                var data = doc.ToDictionary();
-                if (data.ContainsKey("PlayerInfo") && data["PlayerInfo"] is Dictionary<string, object> pi && pi.ContainsKey(userId))
-                {
-                    var game = doc.ConvertTo<BingoGame>();
-                    game.DocumentId = doc.Id;
-                    games.Add(game);
-                }
-            }
-
-            return games;
-        }
-        public async Task<List<BingoGame>> GetGamesForUserAsync(string userId)
-        {
-            var gamesRef = _firestoreDb.Collection("BingoGames");
-            var query = gamesRef.WhereArrayContains("PlayerIds", userId);
-            var snapshot = await query.GetSnapshotAsync();
-
-            var games = new List<BingoGame>();
-            foreach (var doc in snapshot.Documents)
-            {
-                var game = doc.ConvertTo<BingoGame>();
-                game.DocumentId = doc.Id;
-                games.Add(game);
-            }
-
-            return games;
-        }
-        public List<Challenge> ConvertBingoCardsToChallenges(List<BingoCard> bingoCards)
-        {
-            var challenges = new List<Challenge>();
-
-            foreach (var bingoCard in bingoCards)
-            {
-                challenges.Add(new Challenge
-                {
-                    ChallengeId = bingoCard.CardId, // Om du vill använda samma ID
-                    Title = bingoCard.Title,
-                    Description = bingoCard.Description,
-                    Category = bingoCard.Category,
-                    CompletedBy = bingoCard.CompletedBy ?? new List<CompletedInfo>()
-                });
-            }
-
-            return challenges;
-        }
         public async Task<BingoGame?> GetGameByIdAsync(string gameId)
         {
             var collection = _firestoreDb.Collection("BingoGames");
@@ -628,41 +457,7 @@ namespace BingoMaui.Services
                 await userRef.SetAsync(newUserProfile);
             }
         }
-        public async Task<UserProfile> GetUserProfileAsync(string userId)
-        {
-            try
-            {
-                var docRef = _firestoreDb.Collection("users").Document(userId);
-                var snapshot = await docRef.GetSnapshotAsync();
 
-                if (snapshot.Exists)
-                {
-                    return snapshot.ConvertTo<UserProfile>();
-                }
-                else
-                {
-                    Console.WriteLine($"User profile with ID {userId} not found.");
-                    return null;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error fetching user profile: {ex.Message}");
-                return null;
-            }
-        }
-        public async Task<string> GetUserNicknameAsync(string userId)
-        {
-            var userRef = _firestoreDb.Collection("users").Document(userId);
-            var snapshot = await userRef.GetSnapshotAsync();
-
-            if (snapshot.Exists && snapshot.ContainsField("Nickname"))
-            {
-                return snapshot.GetValue<string>("Nickname");
-            }
-
-            return userId; // Fallback till UserId om Nickname inte finns
-        }
         public string FormatTimeAgo(DateTime timestamp)
         {
             var timeSpan = DateTime.Now - timestamp;
@@ -842,6 +637,32 @@ namespace BingoMaui.Services
         public class UploadResponse
         {
             public string Url { get; set; }
+        }
+        public async Task ToggleReactionAsync(string documentId, string commentId, string userId, string emoji)
+        {
+            var commentRef = _firestoreDb
+                .Collection("BingoGames")
+                .Document(documentId)
+                .Collection("Comments")
+                .Document(commentId);
+
+            var commentSnap = await commentRef.GetSnapshotAsync();
+            if (!commentSnap.Exists) return;
+
+            var data = commentSnap.ToDictionary();
+            var reactions = data.ContainsKey("Reactions")
+                ? JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(data["Reactions"].ToString())
+                : new Dictionary<string, List<string>>();
+
+            if (!reactions.ContainsKey(emoji))
+                reactions[emoji] = new List<string>();
+
+            if (reactions[emoji].Contains(userId))
+                reactions[emoji].Remove(userId);
+            else
+                reactions[emoji].Add(userId);
+
+            await commentRef.UpdateAsync("Reactions", reactions);
         }
     }
 }
