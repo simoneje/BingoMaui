@@ -19,6 +19,7 @@ public static class BackendServices
         UserService = new BackendUserService(SharedHttpClient);
         ProfileService = new BackendProfileService(SharedHttpClient);
         MiscService = new BackendMiscService(SharedHttpClient);
+        CommentsService = new BackendCommentsService(SharedHttpClient);
     }
 
     public static BackendGameService GameService { get; }
@@ -26,19 +27,27 @@ public static class BackendServices
     public static BackendUserService UserService { get; }
     public static BackendProfileService ProfileService { get; }
     public static BackendMiscService MiscService { get; }
+    public static BackendCommentsService CommentsService { get; }
 
-    public static async Task UpdateTokenAsync(string newToken = null)
+    public static void UpdateToken(string newToken)
     {
-        if (string.IsNullOrEmpty(newToken))
-        {
-            newToken = await SecureStorage.GetAsync("IdToken");
-        }
+        SharedHttpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", newToken);
+    }
 
-        if (!string.IsNullOrEmpty(newToken))
+    public static void ResetToken()
+    {
+        SharedHttpClient.DefaultRequestHeaders.Authorization = null;
+    }
+
+    public static async Task UpdateTokenAsync()
+    {
+        var token = await SecureStorage.GetAsync("IdToken");
+        if (!string.IsNullOrWhiteSpace(token))
         {
-            SharedHttpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", newToken);
+            UpdateToken(token);
         }
     }
+
 }
 

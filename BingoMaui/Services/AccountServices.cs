@@ -41,5 +41,31 @@ namespace BingoMaui.Services
             Preferences.Clear(); // detta tar bort *allt*
             SecureStorage.RemoveAll();
         }
+        public static async Task LogoutAsync()
+        {
+            try
+            {
+                // 1. Rensa SecureStorage
+                SecureStorage.Remove("IdToken");
+                SecureStorage.Remove("UserId");
+                SecureStorage.Remove("IsLoggedIn");
+
+                // 2. Rensa appdata
+                App.CurrentUserProfile = null;
+                App.CompletedChallengesCache.Clear();
+                AccountServices.ClearGameCacheOnLogout();
+
+                // 3. Återställ backendtoken (valfritt)
+                BackendServices.ResetToken();
+
+                // 4. Navigera till inloggningssida
+                Application.Current.MainPage = new NavigationPage(new MainPage());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Logout error: {ex.Message}");
+            }
+        }
+
     }
 }

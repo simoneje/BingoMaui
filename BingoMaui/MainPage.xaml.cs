@@ -1,12 +1,10 @@
-﻿using Google.Cloud.Firestore;
-using System.Reflection;
-using Microsoft.Maui.Storage;
-                using System.IO;
-using System.Text;
+﻿
 using static Google.Rpc.Context.AttributeContext.Types;
 using Firebase.Auth;
 using BingoMaui.Services;
 using BingoMaui.Services.Backend;
+using System;
+using BingoMaui.Services.Auth;
 
 
 
@@ -48,48 +46,57 @@ namespace BingoMaui
         }
         private async void OnLoginClicked(object sender, EventArgs e)
         {
-            var email = EmailEntry.Text;
+            var email = EmailEntry.Text?.Trim();
             var password = PasswordEntry.Text;
+
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+            {
+                await DisplayAlert("Fel", "Fyll i både e-post och lösenord.", "OK");
+                return;
+            }
 
             try
             {
                 var authService = new FirebaseAuthService();
-                var token = await authService.LoginUserAsync(email, password); // 🔁 Returnerar ID-token
+                var idToken = await authService.LoginUserAsync(email, password); // 🔁 Får ID-token
 
-                if (!token.StartsWith("Error"))
+                if (string.IsNullOrWhiteSpace(idToken) || idToken.StartsWith("Error"))
                 {
-                    // 🔐 Spara token lokalt
-                    await SecureStorage.SetAsync("IdToken", token);
-                    await SecureStorage.SetAsync("IsLoggedIn", "true");
-                    await BackendServices.UpdateTokenAsync(token);
-
-                    // 🔄 Testa token mot backend
-                    var api = BackendServices.MiscService; // ✅
-
-                    var backendOk = await api.TestPingAsync();
-
-                    if (backendOk)
-                    {
-                        await DisplayAlert("Success", "Du är inloggad och ansluten till Game Servern!", "OK");
-
-                        // Navigera till StartPage om allt är OK
-                        Application.Current.MainPage = new NavigationPage(new StartPage());
-                    }
-                    else
-                    {
-                        await DisplayAlert("Fel", "Inloggning lyckades, men anslutning till backend misslyckades (401?)", "OK");
-                    }
+                    await DisplayAlert("Fel", "Inloggning misslyckades. Kontrollera dina uppgifter.", "OK");
+                    return;
                 }
-                else
+
+                // 🔐 Spara i SecureStorage
+                await SecureStorage.SetAsync("IdToken", idToken);
+                await SecureStorage.SetAsync("IsLoggedIn", "true");
+
+                var decodedUserId = JwtService.ExtractUidFromToken(idToken);
+                await SecureStorage.SetAsync("UserId", decodedUserId);
+
+                // ⚙️ Uppdatera token globalt
+                await BackendServices.UpdateTokenAsync();
+
+                // ⛓️ Hämta profil från backend
+                var profile = await BackendServices.MiscService.GetUserProfileFromApiAsync();
+                if (profile == null)
                 {
-                    await DisplayAlert("Error", token, "OK");
+                    await DisplayAlert("Fel", "Kunde inte hämta användarprofil.", "OK");
+                    return;
                 }
+
+                App.CurrentUserProfile = profile;
+
+                // ✅ Navigera till start
+                await DisplayAlert("Välkommen", $"Hej {profile.Nickname}!", "OK");
+                Application.Current.MainPage = new NavigationPage(new StartPage());
             }
             catch (Exception ex)
             {
-                await DisplayAlert("Error", $"Ett fel uppstod: {ex.Message}", "OK");
+                Console.WriteLine($"Login error: {ex.Message}");
+                await DisplayAlert("Fel", "Ett oväntat fel inträffade. Försök igen.", "OK");
             }
         }
+
         private async Task CopyServiceAccountKeyAsync()
         {
             string fileName = "bingomaui28990.json";

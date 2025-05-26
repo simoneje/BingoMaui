@@ -1,6 +1,8 @@
-using BingoMaui.Services;
+ï»¿using BingoMaui.Services;
 using BingoMaui.Services.Backend;
 using Firebase.Auth;
+using static System.Net.Mime.MediaTypeNames;
+using System;
 namespace BingoMaui;
 
 public partial class StartPage : ContentPage
@@ -18,8 +20,8 @@ public partial class StartPage : ContentPage
         if (App.CurrentUserProfile == null)
             App.CurrentUserProfile = new UserProfile();
         App.CurrentUserProfile = await BackendServices.MiscService.GetUserProfileFromApiAsync();
-        // Använd global variabel för att visa nickname
-        WelcomeLabel.Text = $"Välkommen, {App.CurrentUserProfile.Nickname}!";
+        // AnvÃ¤nd global variabel fÃ¶r att visa nickname
+        WelcomeLabel.Text = $"VÃ¤lkommen, {App.CurrentUserProfile.Nickname}!";
     }
 
     private async void OnNavigateButtonClickedCreate(object sender, EventArgs e)
@@ -41,30 +43,10 @@ public partial class StartPage : ContentPage
     }
     private async void OnLogoutClicked(object sender, EventArgs e)
     {
-        bool confirm = await DisplayAlert("Logga ut", "Är du säker på att du vill logga ut?", "Ja", "Nej");
-        if (!confirm)
-            return;
-
-        try
+        var confirm = await DisplayAlert("Logga ut", "Vill du logga ut?", "Ja", "Avbryt");
+        if (confirm)
         {
-            // Rensa inloggningsstatus
-            Preferences.Clear();
-            App.ClearLoggedInNickname();
-;
-            // Rensa den lokala cachen
-            App.CompletedChallengesCache.Clear();
-
-            AccountServices.ClearGameCacheOnLogout();
-
-            Console.WriteLine("Cache cleared upon logout.");
-
-            // Navigera användaren till LoginPage
-            Application.Current.MainPage = new NavigationPage(new MainPage());
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Fel vid utloggning: {ex.Message}");
-            await DisplayAlert("Fel", "Det gick inte att logga ut. Försök igen.", "OK");
+            await AccountServices.LogoutAsync();
         }
     }
     private async void OnMyGamesClicked(object sender, EventArgs e)
