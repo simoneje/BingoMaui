@@ -1,29 +1,20 @@
 ﻿using Firebase.Auth;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using System;
-using System.Threading.Tasks;
-using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 
 namespace BingoMaui.Services
 {
     public class FirebaseAuthService
     {
-        private readonly FirebaseAuthProvider _authProvider;
-        private readonly FirestoreService _firestoreService;
-
         public FirebaseAuthService()
         {
-            _authProvider = new FirebaseAuthProvider(new FirebaseConfig("AIzaSyCuGa8fDtOtjPUc8wQV0kJ1YFi21AY3nr8"));
-            _firestoreService = new FirestoreService();
 
         }
         public string GetLoggedInNickname()
         {
-            if(App.CurrentUserProfile.Nickname == null)
+            if (App.CurrentUserProfile.Nickname == null)
             {
                 return "Anonym";
             }
@@ -36,58 +27,186 @@ namespace BingoMaui.Services
         {
             try
             {
-                // Skapa användaren i Firebase Authentication
-                var auth = await _authProvider.CreateUserWithEmailAndPasswordAsync(email, password);
-                var userId = auth.User.LocalId;
+                if (string.IsNullOrWhiteSpace(nickname))
+                    nickname = email.Split('@')[0];
 
-                // Använd e-post som default nickname om inget anges
-                if (string.IsNullOrEmpty(nickname))
+                var request = new
                 {
-                    nickname = email.Split('@')[0]; // Ta bort domän från e-post
+                    Email = email,
+                    Password = password,
+                    Nickname = nickname
+                };
+
+                var json = JsonSerializer.Serialize(request);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await BackendServices.HttpClient.PostAsync("https://backendbingoapi.onrender.com/api/auth/register", content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorMsg = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ Register failed: {errorMsg}");
+                    return $"Error: {errorMsg}";
                 }
 
-                // Skapa användarens Firestore-dokument
-                await _firestoreService.SetUserAsync(userId, email, nickname);
+                var responseJson = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<RegisterResponse>(responseJson);
 
-                return userId; // Returnera användarens ID
+                // Spara credentials lokalt
+                await SecureStorage.SetAsync("UserId", result.UserId);
+                await SecureStorage.SetAsync("IdToken", result.IdToken);
+                await SecureStorage.SetAsync("IsLoggedIn", "true");
+
+                BackendServices.UpdateToken(result.IdToken);
+
+                return result.UserId;
             }
             catch (Exception ex)
             {
-                // Fånga fel (t.ex. om e-post redan är registrerad)
-                return $"Error creating user: {ex.Message}";
+                Console.WriteLine($"❌ Registration error: {ex.Message}");
+                return $"Error: {ex.Message}";
             }
         }
+
 
         // Metod för att logga in en användare (e-post & lösenord)
         public async Task<string> LoginUserAsync(string email, string password)
         {
             try
             {
-                var auth = await _authProvider.SignInWithEmailAndPasswordAsync(email, password);
-                var userId = auth.User.LocalId;
+                var request = new
+                {
+                    Email = email,
+                    Password = password
+                };
 
-                // Hämta användarens nickname från Firestore
-                //var nickname = await _firestoreService.GetUserNicknameAsync(userId);
-                //App.CurrentUserProfile.Nickname = GetLoggedInNickname();
-                //App.CurrentUserProfile.Nickname = nickname;
+                var json = JsonSerializer.Serialize(request);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                // Spara UserId och Nickname lokalt
-                Preferences.Set("UserId", userId);
-                if (App.CurrentUserProfile == null)
-                    App.CurrentUserProfile = new UserProfile();
+                var response = await BackendServices.HttpClient.PostAsync("https://backendbingoapi.onrender.com/api/auth/login", content);
 
-                App.CurrentUserProfile.UserId = userId;
-                //Preferences.Set("Nickname", nickname);
-                //Console.WriteLine($"Nickname to save: {nickname}");
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorMsg = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ Login failed: {errorMsg}");
+                    return $"Error: {errorMsg}";
+                }
 
-                var idToken = await auth.GetFreshAuthAsync(); // Hämtar färsk token
-                return idToken.FirebaseToken;
+                var responseJson = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<LoginResponse>(responseJson);
 
+                // Spara info lokalt
+                await SecureStorage.SetAsync("UserId", result.LocalId);
+                await SecureStorage.SetAsync("IdToken", result.IdToken);
+                await SecureStorage.SetAsync("RefreshToken", result.RefreshToken);
+
+                await SecureStorage.SetAsync("IsLoggedIn", "true");
+
+                BackendServices.UpdateToken(result.IdToken);
+
+                App.CurrentUserProfile ??= new UserProfile();
+                App.CurrentUserProfile.UserId = result.LocalId;
+
+                return result.IdToken;
             }
             catch (Exception ex)
             {
                 return $"Error logging in: {ex.Message}";
             }
+        }
+        public static async Task<string> RefreshIdTokenAsync(string refreshToken)
+        {
+            try
+            {
+                var client = new HttpClient();
+                var request = new Dictionary<string, string>
+                {
+                    { "grant_type", "refresh_token" },
+                    { "refresh_token", refreshToken }
+                };
+
+                var content = new FormUrlEncodedContent(request);
+                var response = await client.PostAsync(
+                $"https://securetoken.googleapis.com/v1/token?key=AIzaSyCuGa8fDtOtjPUc8wQV0kJ1YFi21AY3nr8",
+                content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine("❌ Refresh token request failed.");
+                    return null;
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync();
+                var refreshData = JsonSerializer.Deserialize<RefreshTokenResponse>(responseJson);
+
+                if (string.IsNullOrEmpty(refreshData?.id_token)) return null;
+
+                await SecureStorage.SetAsync("IdToken", refreshData.id_token);
+                if (!string.IsNullOrEmpty(refreshData.refresh_token))
+                    await SecureStorage.SetAsync("RefreshToken", refreshData.refresh_token);
+
+                return refreshData.id_token;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Exception during token refresh: {ex.Message}");
+                return null;
+            }
+        }
+
+        public class RegisterResponse
+        {
+            [JsonPropertyName("userId")] 
+            public string UserId { get; set; }
+            [JsonPropertyName("idToken")] 
+            public string IdToken { get; set; }
+            // Lägg till om din backend returnerar den:
+            [JsonPropertyName("refreshToken")] 
+            public string? RefreshToken { get; set; }
+        }
+        public class RefreshTokenResponse
+        {
+            [JsonPropertyName("access_token")]
+            public string access_token { get; set; }
+
+            [JsonPropertyName("expires_in")]
+            public string expires_in { get; set; }
+
+            [JsonPropertyName("token_type")]
+            public string token_type { get; set; }
+
+            [JsonPropertyName("refresh_token")]
+            public string refresh_token { get; set; }
+
+            [JsonPropertyName("id_token")]
+            public string id_token { get; set; }
+
+            [JsonPropertyName("user_id")]
+            public string user_id { get; set; }
+
+            [JsonPropertyName("project_id")]
+            public string project_id { get; set; }
+        }
+
+        public class LoginResponse
+        {
+            [JsonPropertyName("localId")]
+            public string LocalId { get; set; }
+
+            [JsonPropertyName("email")]
+            public string Email { get; set; }
+
+            [JsonPropertyName("idToken")]
+            public string IdToken { get; set; }
+
+            [JsonPropertyName("refreshToken")]
+            public string RefreshToken { get; set; }
+
+            [JsonPropertyName("expiresIn")]
+            public string ExpiresIn { get; set; }
+
+            [JsonPropertyName("registered")]
+            public bool Registered { get; set; }
         }
     }
 }

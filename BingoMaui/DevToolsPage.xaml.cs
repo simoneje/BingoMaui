@@ -3,8 +3,7 @@ namespace BingoMaui;
 
 public partial class DevToolsPage : ContentPage
 {
-    private readonly FirestoreService _firestoreService = new();
-    private readonly FirestoreAdminService _adminService = new();
+
 
     public DevToolsPage()
     {
@@ -14,16 +13,15 @@ public partial class DevToolsPage : ContentPage
 
     private async void OnMigratePlayerIdsClicked(object sender, EventArgs e)
     {
-        await _adminService.MigratePlayerIdsAsync();
         await DisplayAlert("Klar", "PlayerIds migrerade!", "OK");
     }
 
     private async void OnShowUserInfoClicked(object sender, EventArgs e)
     {
-        var uid = Preferences.Get("UserId", "N/A");
+        var userId = await BackendServices.GetUserIdAsync();
         var profile = App.CurrentUserProfile;
 
-        string info = $"UserId: {uid}\nFärg: {profile?.PlayerColor ?? "?"}";
+        string info = $"UserId: {userId}\nFärg: {profile?.PlayerColor ?? "?"}";
         await DisplayAlert("Användarinformation", info, "OK");
     }
 

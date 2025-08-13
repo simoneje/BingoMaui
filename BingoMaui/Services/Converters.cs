@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace BingoMaui.Services
@@ -42,6 +44,30 @@ namespace BingoMaui.Services
                 CompletedBy = card.CompletedBy
             }).ToList();
         }
+        //public class FirestoreTimestampConverter : JsonConverter<DateTime>
+        //{
+        //    public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        //    {
+        //        if (reader.TokenType == JsonTokenType.StartObject)
+        //        {
+        //            using var doc = JsonDocument.ParseValue(ref reader);
+        //            var root = doc.RootElement;
+        //            var seconds = root.GetProperty("seconds").GetInt64();
+        //            var nanos = root.TryGetProperty("nanos", out var nanosProp) ? nanosProp.GetInt32() : 0;
+
+        //            return DateTimeOffset.FromUnixTimeSeconds(seconds)
+        //                                 .AddTicks(nanos / 100)
+        //                                 .UtcDateTime;
+        //        }
+
+        //        throw new JsonException("Kunde inte parsa Firestore timestamp");
+        //    }
+
+        //    public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
+        //    {
+        //        throw new NotImplementedException(); // Om du inte behöver skriva tillbaka till Firestore
+        //    }
+        //}
     }
 
 }

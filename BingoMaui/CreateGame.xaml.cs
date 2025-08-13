@@ -15,8 +15,6 @@ public partial class CreateGame : ContentPage
     public CreateGame()
     {
         InitializeComponent();
-
-        
     }
     private BingoCard ConvertDictionaryToBingoCard(Dictionary<string, object> dict)
     {
@@ -49,7 +47,7 @@ public partial class CreateGame : ContentPage
         var endDateUtc = EndDatePicker.Date.ToUniversalTime();
 
         var userProfile = App.CurrentUserProfile;
-        string userColor = userProfile?.PlayerColor ?? "#FF5733";
+        
 
         var gameRequest = new CreateGameRequest
         {
@@ -58,7 +56,7 @@ public partial class CreateGame : ContentPage
             EndDate = endDateUtc,
             Cards = combinedChallenges,
             Nickname = userProfile.Nickname,
-            PlayerColor = userColor
+            PlayerColor = string.IsNullOrWhiteSpace(userProfile.PlayerColor) ? "#00FFFF" : userProfile.PlayerColor
         };
 
         var game = await BackendServices.GameService.CreateGameAsync(gameRequest);

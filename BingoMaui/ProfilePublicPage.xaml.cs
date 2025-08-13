@@ -8,7 +8,7 @@ namespace BingoMaui
 {
     public partial class ProfilePublicPage : ContentPage
     {
-        private readonly FirestoreService _firestoreService = new();
+
         private string _userId;
 
         public ProfilePublicPage(string userId)

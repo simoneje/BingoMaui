@@ -13,12 +13,12 @@ public partial class MyGames : ContentPage
     {
         InitializeComponent();
         _gameService = BackendServices.GameService;
-        _userId = Preferences.Get("UserId", string.Empty); // Hämtar inloggad användares ID
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        _userId = await BackendServices.GetUserIdAsync();
         await LoadMyGamesAsync();
     }
 

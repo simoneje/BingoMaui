@@ -4,7 +4,7 @@ namespace BingoMaui;
 public partial class CreateChallenge : ContentPage
 {
     private List<Dictionary<string, object>> userChallenges;
-    private readonly FirestoreService _firestoreService;
+
 
     public CreateChallenge(List<Dictionary<string, object>> existingChallenges)
     {

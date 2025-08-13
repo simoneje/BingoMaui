@@ -1,4 +1,4 @@
-using Firebase;
+﻿using Firebase;
 using BingoMaui;
 using Google.Cloud.Firestore;
 using BingoMaui.Services;
@@ -8,7 +8,7 @@ namespace BingoMaui;
 public partial class Leaderboard : ContentPage
 {
     private string _gameId;
-    private ObservableCollection<LeaderboardEntry> _leaderboardEntries = new ObservableCollection<LeaderboardEntry>();
+    private List<LeaderboardEntry> _entries = new();
     public Leaderboard(string gameId)
     {
         InitializeComponent();
@@ -19,8 +19,6 @@ public partial class Leaderboard : ContentPage
         base.OnAppearing();
         await LoadLeaderboardAsync();
     }
-
-
     private async Task LoadLeaderboardAsync()
     {
         var game = await BackendServices.GameService.GetGameByIdAsync(_gameId);
@@ -30,28 +28,46 @@ public partial class Leaderboard : ContentPage
             return;
         }
 
-        var sortedEntries = game.PlayerInfo
+        var sorted = game.PlayerInfo
             .OrderByDescending(p => p.Value.Points)
-            .Select(p => new LeaderboardEntry
+            .Select((kvp, index) => new LeaderboardEntry
             {
-                Nickname = p.Value.Nickname,
-                Points = p.Value.Points
+                Nickname = kvp.Value.Nickname,
+                Points = kvp.Value.Points,
+                PlayerColor = Color.FromArgb(kvp.Value.Color ?? "#FFFFFF"),
+                RankEmoji = index switch
+                {
+                    0 => "🥇",
+                    1 => "🥈",
+                    2 => "🥉",
+                    _ => $"{index + 1}."
+                },
+                PointsText = $"Poäng: {kvp.Value.Points}",
+                PlayerId = kvp.Key
             })
             .ToList();
 
-        _leaderboardEntries.Clear();
-        foreach (var entry in sortedEntries)
+        _entries = sorted;
+        LeaderboardCollectionView.ItemsSource = _entries;
+    }
+    private async void OnPlayerSelected(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.CurrentSelection.FirstOrDefault() is LeaderboardEntry selected)
         {
-            _leaderboardEntries.Add(entry);
+            await Navigation.PushAsync(new ProfilePublicPage(selected.PlayerId));
         }
 
-        LeaderboardListView.ItemsSource = _leaderboardEntries;
+        ((CollectionView)sender).SelectedItem = null;
     }
-
 
     public class LeaderboardEntry
     {
         public string Nickname { get; set; }
         public int Points { get; set; }
+        public string RankEmoji { get; set; }
+        public string PointsText { get; set; }
+        public Color PlayerColor { get; set; }
+        public string PlayerId { get; set; }
     }
 }
+

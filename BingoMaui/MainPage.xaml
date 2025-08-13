@@ -30,11 +30,7 @@
                 VerticalOptions="Center"
                 HorizontalOptions="Center" />-->
 
-            <Button
-                Text="Test Firestore Auth"
-                Clicked="TestCredentialButton_Clicked"
-                VerticalOptions="Center"
-                HorizontalOptions="Center" />
+
             <Entry x:Name="EmailEntry" Placeholder="Email" />
             <Entry x:Name="PasswordEntry" Placeholder="Password" IsPassword="True" />
             <Entry x:Name="NicknameEntry" Placeholder="Användarnamn (valfritt)" />

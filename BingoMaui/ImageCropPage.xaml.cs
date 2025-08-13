@@ -11,7 +11,7 @@ namespace BingoMaui
     public partial class ImageCropPage : ContentPage
     {
         private readonly Stream _imageStream;
-        private readonly FirestoreService _firestoreService = new();
+
 
         public ImageCropPage(Stream imageStream)
         {

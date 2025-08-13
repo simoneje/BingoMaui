@@ -1,4 +1,5 @@
-﻿using Google.Cloud.Firestore;
+﻿using BingoMaui.Services;
+using Google.Cloud.Firestore;
 using Plugin.CloudFirestore.Attributes;
 using System;
 using System.Collections.Generic;

@@ -1,9 +1,5 @@
-﻿using Firebase;
+﻿
 using BingoMaui.Services;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.Maui.Controls;
 using System.Text.Json;
 namespace BingoMaui;
 
@@ -88,9 +84,8 @@ public partial class BingoBricka : ContentPage
             BingoGrid.ColumnDefinitions.Clear();
 
             int totalItems = challenges.Count;
-            int gridSize = (int)Math.Ceiling(Math.Sqrt(totalItems)); // t.ex. 10 för 100 rutor
+            int gridSize = (int)Math.Ceiling(Math.Sqrt(totalItems));
 
-            // Dynamiskt definiera rader & kolumner
             for (int i = 0; i < gridSize; i++)
             {
                 BingoGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
@@ -109,8 +104,8 @@ public partial class BingoBricka : ContentPage
                     Padding = 4,
                     RowDefinitions =
                 {
-                    new RowDefinition { Height = GridLength.Star },   // Titel
-                    new RowDefinition { Height = GridLength.Auto },   // Prickar
+                    new RowDefinition { Height = GridLength.Star },
+                    new RowDefinition { Height = GridLength.Auto },
                 }
                 };
 
@@ -127,52 +122,98 @@ public partial class BingoBricka : ContentPage
                 };
                 tileGrid.Add(titleLabel, 0, 0);
 
-                // Prickar
-                var dotsLayout = new StackLayout
-                {
-                    Orientation = StackOrientation.Horizontal,
-                    HorizontalOptions = LayoutOptions.Center,
-                    VerticalOptions = LayoutOptions.Center,
-                    Spacing = 2
-                };
-
+                // Prickar eller +X
                 if (challenge.CompletedBy != null && challenge.CompletedBy.Count > 0)
                 {
-                    const int maxDots = 5;
-                    int shownDots = Math.Min(maxDots, challenge.CompletedBy.Count);
-
-                    for (int j = 0; j < shownDots; j++)
+                    var completions = challenge.CompletedBy;
+                    var dotsGrid = new Grid
                     {
-                        var completedInfo = challenge.CompletedBy[j];
-                        var dotColor = string.IsNullOrWhiteSpace(completedInfo.UserColor) ? "#FFFFFF" : completedInfo.UserColor;
+                        HorizontalOptions = LayoutOptions.Center,
+                        VerticalOptions = LayoutOptions.Center,
+                        Padding = 0
+                    };
 
-                        dotsLayout.Children.Add(new BoxView
-                        {
-                            WidthRequest = 10,
-                            HeightRequest = 10,
-                            CornerRadius = 5,
-                            BackgroundColor = Color.FromArgb(dotColor),
-                            Margin = new Thickness(1)
-                        });
-                    }
+                    var userId = App.CurrentUserProfile?.UserId;
+                    var myCompletion = completions.FirstOrDefault(c => c.PlayerId == userId);
+                    int totalCount = completions.Count;
+                    bool isMine = myCompletion != null;
 
-                    // Lägg till en "..."-indikator om fler än maxDots
-                    if (challenge.CompletedBy.Count > maxDots)
+                    if (totalCount > 4)
                     {
-                        dotsLayout.Children.Add(new Label
+                        int colDot = 0;
+
+                        if (isMine)
                         {
-                            Text = "...",
-                            TextColor = Colors.White,
-                            FontSize = 10,
+                            dotsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                            var myDot = new BoxView
+                            {
+                                WidthRequest = 10,
+                                HeightRequest = 10,
+                                CornerRadius = 5,
+                                BackgroundColor = Color.FromArgb(myCompletion.UserColor ?? "#FFFFFF"),
+                                Margin = new Thickness(1)
+                            };
+
+                            dotsGrid.Add(myDot, colDot++, 0);
+                        }
+
+                        var remaining = isMine ? totalCount - 1 : totalCount;
+
+                        dotsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                        var badge = new Frame
+                        {
+                            BackgroundColor = Colors.Black.WithAlpha(0.6f),
+                            CornerRadius = 6,
+                            Padding = new Thickness(6, 2),
+                            Content = new Label
+                            {
+                                Text = $"+{remaining}",
+                                TextColor = Colors.White,
+                                FontSize = 10,
+                                HorizontalTextAlignment = TextAlignment.Center
+                            },
                             VerticalOptions = LayoutOptions.Center,
-                            Margin = new Thickness(2, 0)
-                        });
+                            HorizontalOptions = LayoutOptions.Center,
+                            HasShadow = false
+                        };
+
+                        var tap = new TapGestureRecognizer
+                        {
+                            Command = new Command(async () =>
+                            {
+                                await ShowAllCompletedPlayers(completions);
+                            })
+                        };
+                        badge.GestureRecognizers.Add(tap);
+
+                        dotsGrid.Add(badge, colDot, 0);
                     }
+                    else
+                    {
+                        int col2 = 0;
+                        foreach (var c in completions)
+                        {
+                            dotsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                            var dot = new BoxView
+                            {
+                                WidthRequest = 10,
+                                HeightRequest = 10,
+                                CornerRadius = 5,
+                                BackgroundColor = Color.FromArgb(c.UserColor ?? "#FFFFFF"),
+                                Margin = new Thickness(1)
+                            };
+
+                            dotsGrid.Add(dot, col2++, 0);
+                        }
+                    }
+
+                    tileGrid.Add(dotsGrid, 0, 1);
                 }
 
-                tileGrid.Add(dotsLayout, 0, 1);
-
-                // Tap Gesture
+                // Tap för hela rutan
                 var tapGesture = new TapGestureRecognizer();
                 tapGesture.Tapped += async (sender, args) =>
                 {
@@ -193,6 +234,7 @@ public partial class BingoBricka : ContentPage
             await Application.Current.MainPage.DisplayAlert("Fel", "Kunde inte bygga bingobrickan.", "OK");
         }
     }
+
 
     private async void OnGameSettingsClicked(object sender, EventArgs e)
     {
@@ -226,7 +268,7 @@ public partial class BingoBricka : ContentPage
     private async void OnShowLeaderboardClicked(object sender, EventArgs e)
     {
         // Navigera till LeaderboardPage och skicka med _gameId
-        await Navigation.PushAsync(new Leaderboard(_gameId));
+        await Navigation.PushAsync(new BingoMaui.Leaderboard(_gameId));
     }
     private async void OnToggleCommentsClicked(object sender, EventArgs e)
     {
@@ -262,4 +304,12 @@ public partial class BingoBricka : ContentPage
             _currentScale = BingoGrid.Scale;
         }
     }
+    private async Task ShowAllCompletedPlayers(List<CompletedInfo> completedList)
+    {
+        string playerNames = string.Join("\n", completedList.Select(c =>
+            $"{c.Nickname} ({c.UserColor})"));
+
+        await Application.Current.MainPage.DisplayAlert("Spelare som klarat denna:", playerNames, "OK");
+    }
+
 }

@@ -6,13 +6,13 @@ namespace BingoMaui;
 
 public partial class JoinGame : ContentPage
 {
-    private readonly FirestoreService _firestoreService;
+
     private readonly string selectedColor = "";
 
     public JoinGame()
     {
         InitializeComponent();
-        _firestoreService = new FirestoreService(); // Skapa en instans av FirestoreService
+
     }
 
     private async void OnJoinGameClicked(object sender, EventArgs e)

@@ -10,11 +10,10 @@ namespace BingoMaui.Components
         private readonly string _gameId;
         private readonly string _challengeTitle;
         private string _commentId;
-        private readonly FirestoreService _firestoreService;
+
         public MoreOptionsPopup(string gameId)
         {
             InitializeComponent();
-            _firestoreService = new FirestoreService();
             _gameId = gameId;
             // Starta liten
             PopupContent.Scale = 0.5;
@@ -43,21 +42,21 @@ namespace BingoMaui.Components
         }
         private async void OnReactClicked(object sender, EventArgs e)
         {
-            var emoji = await Application.Current.MainPage.DisplayActionSheet(
-                "Välj en reaktion", "Avbryt", null, "👍", "❤️", "😂", "🔥", "🎉");
+            //var emoji = await Application.Current.MainPage.DisplayActionSheet(
+            //    "Välj en reaktion", "Avbryt", null, "👍", "❤️", "😂", "🔥", "🎉");
 
-            if (emoji == null || emoji == "Avbryt") return;
-            var game = await _firestoreService.GetGameByIdAsync(_gameId);
-            var comments = await _firestoreService.GetCommentsAsync(_gameId);
-            foreach (var comment in comments)
-            {
-                _commentId = comment.CommentId; // Du måste ha en sådan property
-            }
-            if (_commentId != null)
-            {
-                // FirestoreService måste ha referenser till gameId, challengeTitle osv – skicka in dem!
-                await _firestoreService.ToggleReactionAsync(game.DocumentId, _commentId, App.CurrentUserProfile.UserId, emoji);
-            }
+            //if (emoji == null || emoji == "Avbryt") return;
+            //var game = await _firestoreService.GetGameByIdAsync(_gameId);
+            //var comments = await _firestoreService.GetCommentsAsync(_gameId);
+            //foreach (var comment in comments)
+            //{
+            //    _commentId = comment.CommentId; // Du måste ha en sådan property
+            //}
+            //if (_commentId != null)
+            //{
+            //    // FirestoreService måste ha referenser till gameId, challengeTitle osv – skicka in dem!
+            //    await _firestoreService.ToggleReactionAsync(game.DocumentId, _commentId, App.CurrentUserProfile.UserId, emoji);
+            //}
             Close(); // Stäng popup
         }
 

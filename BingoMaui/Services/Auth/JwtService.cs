@@ -23,5 +23,29 @@ namespace BingoMaui.Services.Auth
                 return string.Empty;
             }
         }
+        public static bool IsTokenExpired(string jwt)
+        {
+            if (string.IsNullOrWhiteSpace(jwt))
+                return true;
+
+            try
+            {
+                var handler = new JwtSecurityTokenHandler();
+                var token = handler.ReadJwtToken(jwt);
+
+                var expClaim = token.Claims.FirstOrDefault(c => c.Type == "exp")?.Value;
+                if (expClaim == null) return true;
+
+                var expUnix = long.Parse(expClaim);
+                var expTime = DateTimeOffset.FromUnixTimeSeconds(expUnix);
+
+                return expTime <= DateTimeOffset.UtcNow;
+            }
+            catch
+            {
+                return true; // Om något går fel, anta att token är ogiltig
+            }
+        }
+
     }
 }

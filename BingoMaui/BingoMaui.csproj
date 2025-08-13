@@ -228,10 +228,4 @@
 	  <MauiAsset Include="Resources\Images\comment.png" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <MauiAsset Update="Resources\Raw\bingomaui28990.json">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </MauiAsset>
-	</ItemGroup>
-
 </Project>

@@ -4,15 +4,10 @@ using System.Net.Http.Headers;
 public static class BackendServices
 {
     private static readonly HttpClient SharedHttpClient;
+    private const string UserIdKey = "UserId";
     static BackendServices()
     {
         SharedHttpClient = new HttpClient();
-        var token = Preferences.Get("IdToken", "");
-        if (!string.IsNullOrEmpty(token))
-        {
-            SharedHttpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
-        }
 
         GameService = new BackendGameService(SharedHttpClient);
         ChallengeService = new BackendChallengeService(SharedHttpClient);
@@ -28,6 +23,7 @@ public static class BackendServices
     public static BackendProfileService ProfileService { get; }
     public static BackendMiscService MiscService { get; }
     public static BackendCommentsService CommentsService { get; }
+    public static HttpClient HttpClient => SharedHttpClient;
 
     public static void UpdateToken(string newToken)
     {
@@ -48,6 +44,22 @@ public static class BackendServices
             UpdateToken(token);
         }
     }
+    public static async Task<string> GetUserIdAsync()
+    {
+        return await SecureStorage.GetAsync(UserIdKey) ?? string.Empty;
+    }
+
+    public static async Task SetUserIdAsync(string userId)
+    {
+        if (!string.IsNullOrWhiteSpace(userId))
+            await SecureStorage.SetAsync(UserIdKey, userId);
+    }
+
+    public static void ClearUserId()
+    {
+        SecureStorage.Remove(UserIdKey);
+    }
+
 
 }
 

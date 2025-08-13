@@ -11,7 +11,6 @@ namespace BingoMaui
 {
     public partial class ProfileEditPage : ContentPage
     {
-        private readonly FirestoreService _firestoreService = new();
         private UserProfile _profile;
 
         public ProfileEditPage()
@@ -22,8 +21,8 @@ namespace BingoMaui
         protected override async void OnAppearing()
         {
             base.OnAppearing();
-            ProfileImage.Source = "dotnet_bot.png";
-            var userId = Preferences.Get("UserId", string.Empty);
+
+            string userId = await BackendServices.GetUserIdAsync();
             _profile = await BackendServices.MiscService.GetUserProfileFromApiAsync();
 
             if (_profile != null)
@@ -37,7 +36,6 @@ namespace BingoMaui
                 InterestsEntry.Text = _profile.Interests;
                 GenderEntry.Text = _profile.Gender;
 
-                // Bind achievements (optional placeholder)
                 BadgesCollection.ItemsSource = GetBadgesFromIds(_profile.Achievements);
             }
         }
@@ -48,13 +46,15 @@ namespace BingoMaui
             _profile.Goal = GoalEntry.Text;
             _profile.Interests = InterestsEntry.Text;
             _profile.Gender = GenderEntry.Text;
-            
 
             if (int.TryParse(AgeEntry.Text, out int age))
                 _profile.Age = age;
 
-            await _firestoreService.UpdateUserProfileAsync(_profile);
-            await DisplayAlert("Sparat", "Din profil har sparats!", "OK");
+            var success = await BackendServices.MiscService.UpdateUserProfileAsync(_profile);
+            if (success)
+                await DisplayAlert("Sparat", "Din profil har sparats!", "OK");
+            else
+                await DisplayAlert("Fel", "Kunde inte spara profilen.", "OK");
         }
 
         private async void OnChangeProfilePictureClicked(object sender, EventArgs e)
@@ -69,20 +69,15 @@ namespace BingoMaui
 
                 if (result != null)
                 {
-
                     using var stream = await result.OpenReadAsync();
-                    var downloadUrl = await _firestoreService.UploadProfileImageAsync(stream, App.CurrentUserProfile.UserId);
+                    var imageUrl = await BackendServices.MiscService.UploadProfileImageAsync(stream, result.FileName);
 
-                    if (!string.IsNullOrEmpty(downloadUrl))
+                    if (!string.IsNullOrEmpty(imageUrl))
                     {
-                        // Uppdatera bilden direkt i UI
-                        ProfileImage.Source = ImageSource.FromUri(new Uri(downloadUrl));
+                        _profile.ProfileImageUrl = imageUrl;
+                        ProfileImage.Source = ImageSource.FromUri(new Uri(imageUrl));
 
-                        // Uppdatera lokal modell
-                        App.CurrentUserProfile.ProfileImageUrl = downloadUrl;
-
-                        // Uppdatera Firestore
-                        await _firestoreService.UpdateUserProfileAsync(App.CurrentUserProfile);
+                        await BackendServices.MiscService.UpdateUserProfileAsync(_profile);
                     }
                 }
             }
@@ -94,12 +89,11 @@ namespace BingoMaui
 
         private List<BadgeModel> GetBadgesFromIds(List<string> achievementIds)
         {
-            // Placeholder: Replace with real logic
             var allBadges = new List<BadgeModel>
-            {
-                new BadgeModel { Id = "firstWin", Name = "Första vinsten", Icon = "firstwin.png" },
-                new BadgeModel { Id = "completed10Challenges", Name = "10 klara!", Icon = "10done.png" }
-            };
+        {
+            new BadgeModel { Id = "firstWin", Name = "Första vinsten", Icon = "firstwin.png" },
+            new BadgeModel { Id = "completed10Challenges", Name = "10 klara!", Icon = "10done.png" }
+        };
 
             return allBadges.FindAll(b => achievementIds.Contains(b.Id));
         }

@@ -21,4 +21,14 @@ public partial class SettingsPage : ContentPage
 
         await Navigation.PushAsync(new StartPage());
     }
+    private async void OnClearCacheClicked(object sender, EventArgs e)
+    {
+        bool confirm = await DisplayAlert("Rensa cache", "Vill du rensa alla sparade spel och lokal data?", "Rensa", "Avbryt");
+        if (!confirm) return;
+
+        AccountServices.ClearGameCacheOnLogout();
+        App.CompletedChallengesCache.Clear();
+
+        await DisplayAlert("Klart", "Cachen är rensad.", "OK");
+    }
 }

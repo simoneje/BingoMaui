@@ -16,6 +16,10 @@
                 Clicked="OnLogoutClicked"
                 BackgroundColor="Red"
                 TextColor="White"/>
+        <Button Text="Rensa Cache"
+                Clicked="OnClearCacheClicked"
+                BackgroundColor="Green"
+                TextColor="White" />
     </StackLayout>
 
 </ContentPage>

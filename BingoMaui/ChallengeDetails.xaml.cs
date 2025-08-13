@@ -1,4 +1,4 @@
-using BingoMaui.Services;
+Ôªøusing BingoMaui.Services;
 using BingoMaui;
 using BingoMaui.Services.Backend;
 
@@ -7,22 +7,25 @@ namespace BingoMaui
     public partial class ChallengeDetails : ContentPage
     {
         private readonly Challenge _challenge;
-        private readonly string _currentUserId;
+        private string _currentUserId;
         private readonly string _gameId;
 
         public ChallengeDetails(string gameId, Challenge challenge)
         {
             InitializeComponent();
             _challenge = challenge;
-            _currentUserId = Preferences.Get("UserId", string.Empty);
             _gameId = gameId;
 
             ChallengeTitleLabel.Text = challenge.Title;
             ChallengeDescriptionLabel.Text = challenge.Description;
-
-            _ = LoadCompletedPlayers();
         }
 
+        protected override async void OnAppearing()
+        {
+            base.OnAppearing();
+            _currentUserId = await BackendServices.GetUserIdAsync(); // üîÅ Anv√§nd SecureStorage-hj√§lpare om du har den
+            await LoadCompletedPlayers();
+        }
         private async Task LoadCompletedPlayers()
         {
             try
@@ -94,7 +97,7 @@ namespace BingoMaui
             var updatedGame = await BackendServices.GameService.GetGameByIdAsync(_gameId);
             if (updatedGame == null)
             {
-                await DisplayAlert("Fel", "Kunde inte h‰mta spelet efter uppdatering.", "OK");
+                await DisplayAlert("Fel", "Kunde inte h√§mta spelet efter uppdatering.", "OK");
                 return;
             }
 
@@ -109,12 +112,12 @@ namespace BingoMaui
 
             _challenge.CompletedBy = updatedCard.CompletedBy;
             await LoadCompletedPlayers();
-            await DisplayAlert("FramgÂng!", "Utmaningen ‰r markerad som klarad!", "OK");
+            await DisplayAlert("Framg√•ng!", "Utmaningen √§r markerad som klarad!", "OK");
         }
 
         private async void OnUnmarkCompletedClicked(object sender, EventArgs e)
         {
-            var confirm = await DisplayAlert("Bekr‰fta", "Vill du verkligen ta bort din klarmarkering?", "Ja", "Avbryt");
+            var confirm = await DisplayAlert("Bekr√§fta", "Vill du verkligen ta bort din klarmarkering?", "Ja", "Avbryt");
             if (!confirm) return;
 
             var success = await BackendServices.ChallengeService.UnmarkChallengeAsCompletedAsync(_gameId, _challenge.Title);
@@ -128,7 +131,7 @@ namespace BingoMaui
             var updatedGame = await BackendServices.GameService.GetGameByIdAsync(_gameId);
             if (updatedGame == null)
             {
-                await DisplayAlert("Fel", "Kunde inte h‰mta spelet efter uppdatering.", "OK");
+                await DisplayAlert("Fel", "Kunde inte h√§mta spelet efter uppdatering.", "OK");
                 return;
             }
 

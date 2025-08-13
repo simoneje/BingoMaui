@@ -7,16 +7,14 @@ namespace BingoMaui;
 
 public partial class StartPage : ContentPage
 {
-    private readonly FirestoreService _firestoreService;
+
     public StartPage()
     {
         InitializeComponent();
-        _firestoreService = new FirestoreService();
-
     }
     protected override async void OnAppearing()
     {
-        string userId = Preferences.Get("UserId", string.Empty);
+        string userId = await BackendServices.GetUserIdAsync();
         if (App.CurrentUserProfile == null)
             App.CurrentUserProfile = new UserProfile();
         App.CurrentUserProfile = await BackendServices.MiscService.GetUserProfileFromApiAsync();
@@ -38,7 +36,7 @@ public partial class StartPage : ContentPage
     }
     private async void OnNavigateButtonClickedProfile(object sender, EventArgs e)
     {
-        string userId = Preferences.Get("UserId", string.Empty);
+        string userId = await BackendServices.GetUserIdAsync();
         await Navigation.PushAsync(new ProfilePublicPage(userId));
     }
     private async void OnLogoutClicked(object sender, EventArgs e)
