@@ -1,66 +1,95 @@
 ﻿
 using BingoMaui.Services;
 using System.Text.Json;
+
 namespace BingoMaui;
 
 public partial class BingoBricka : ContentPage
 {
-    private double _currentScale = 1;
-    private double _startScale = 1;
-    private double _xOffset = 0;
-    private double _yOffset = 0;
     private string _gameId;
-    private List<Challenge> _challenges;
-    private string _inviteCode;
+    private List<Challenge> _challenges = new();
+    private string _inviteCode = string.Empty;
+
+    // ---- Layout/scroll parametrar ----
+    private const int BaseVisibleCols = 5;   // “så här många kolumner får plats utan scroll” (behåll nuvarande look)
+    private const double TileSpacing = 5;    // matchar XAML Grid.Row/ColumnSpacing
+    private const double GridSidePadding = 20; // BingoGrid.Padding left+right (10 + 10)
+
+    private double _tileSize = 0;            // beräknas utifrån skärmbredd och BaseVisibleCols
+    private bool _layoutReady = false;       // sätts när vi har mått för BoardScroll
     public BingoBricka(string gameId)
     {
         InitializeComponent();
         _gameId = gameId;
-        _challenges = new();
-        _inviteCode = string.Empty;
+
+        // Lyssna när layouten fått storlek för att räkna fram tegelstorlek
+        SizeChanged += OnPageSizeChanged;
+    }
+    // Beräkna tile-storlek när vi fått faktiska mått
+    private void OnPageSizeChanged(object sender, EventArgs e)
+    {
+        if (BoardScroll?.Width > 0)
+        {
+            var width = BoardScroll.Width; // tillgänglig vybredd för brädet
+            // total horisontell spacing mellan 5 kolumner = 4 * TileSpacing
+            var totalSpacing = TileSpacing * (BaseVisibleCols - 1);
+            var usable = width - GridSidePadding - totalSpacing;
+            var size = Math.Floor(usable / BaseVisibleCols);
+
+            // Rimlig min/max-säkring
+            if (size < 60) size = 60;
+            if (size > 220) size = 220;
+
+            if (Math.Abs(_tileSize - size) > 0.1)
+            {
+                _tileSize = size;
+                _layoutReady = true;
+
+                // Om vi redan har data – rendera om med ny storlek
+                if (_challenges.Count > 0)
+                    PopulateBingoGrid(_challenges);
+            }
+        }
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
 
-        BingoGame cachedGame = null;
-
-        // 🧠 1. Läs från cache
-        var cachedJson = Preferences.Get($"cachedGame_{_gameId}", null);
-        if (!string.IsNullOrEmpty(cachedJson))
+        // 1) Läs cache via AccountServices
+        var cachedGame = AccountServices.LoadGameFromCache(_gameId);
+        if (cachedGame != null)
         {
-            cachedGame = JsonSerializer.Deserialize<BingoGame>(cachedJson);
-            if (cachedGame != null)
-            {
-                _inviteCode = cachedGame.InviteCode;
-                _challenges = Converters.ConvertBingoCardsToChallenges(cachedGame.Cards);
-                InviteCodeLabel.Text = _inviteCode;
-                PopulateBingoGrid(_challenges);
-            }
+            _inviteCode = cachedGame.InviteCode;
+            _challenges = Converters.ConvertBingoCardsToChallenges(cachedGame.Cards);
+            InviteCodeLabel.Text = _inviteCode;
+
+            if (_layoutReady) PopulateBingoGrid(_challenges);
         }
 
         try
         {
-            // 🔄 2. Hämta färsk data i bakgrunden
+            // 2) Hämta färskt från backend
             var latestGame = await BackendServices.GameService.GetGameByIdAsync(_gameId);
             if (latestGame != null)
             {
-                var shouldRefresh = cachedGame == null ||
-                                    cachedGame.Cards?.Count != latestGame.Cards?.Count ||
-                                    !cachedGame.Cards.Select(c => c.Title).SequenceEqual(latestGame.Cards.Select(c => c.Title));
+                // Jämför via CardId (robustare än titel, särskilt med dubbletter)
+                bool shouldRefresh =
+                    cachedGame == null ||
+                    cachedGame.Cards?.Count != latestGame.Cards?.Count ||
+                    !cachedGame.Cards.Select(c => c.CardId).SequenceEqual(latestGame.Cards.Select(c => c.CardId));
 
                 if (shouldRefresh)
                 {
                     _challenges = Converters.ConvertBingoCardsToChallenges(latestGame.Cards);
-                    PopulateBingoGrid(_challenges);
+                    if (_layoutReady) PopulateBingoGrid(_challenges);
                 }
 
                 _inviteCode = latestGame.InviteCode;
                 InviteCodeLabel.Text = _inviteCode;
 
-                // 💾 Uppdatera cache
-                Preferences.Set($"cachedGame_{_gameId}", JsonSerializer.Serialize(latestGame));
+                // 3) Uppdatera cache via AccountServices
+                AccountServices.SaveGameToCache(latestGame);
             }
         }
         catch (Exception ex)
@@ -68,6 +97,8 @@ public partial class BingoBricka : ContentPage
             Console.WriteLine($"🔌 Fel vid hämtning från backend: {ex.Message}");
         }
     }
+
+
     private async void PopulateBingoGrid(List<Challenge> challenges)
     {
         try
@@ -75,7 +106,17 @@ public partial class BingoBricka : ContentPage
             if (BingoGrid == null || challenges == null || challenges.Count == 0)
             {
                 Console.WriteLine("BingoGrid är null eller inga utmaningar.");
-                await Application.Current.MainPage.DisplayAlert("Fel", "Inga utmaningar att visa.", "OK");
+                await DisplayAlert("Fel", "Inga utmaningar att visa.", "OK");
+                return;
+            }
+
+            if (_tileSize <= 0)
+            {
+                // Har vi ingen storlek ännu? Försök trigga om senare
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    // När SizeChanged kör, kommer den rendera om.
+                });
                 return;
             }
 
@@ -84,13 +125,13 @@ public partial class BingoBricka : ContentPage
             BingoGrid.ColumnDefinitions.Clear();
 
             int totalItems = challenges.Count;
-            int gridSize = (int)Math.Ceiling(Math.Sqrt(totalItems));
+            int gridSize = (int)Math.Ceiling(Math.Sqrt(totalItems)); // NxN
 
-            for (int i = 0; i < gridSize; i++)
-            {
-                BingoGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
-                BingoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
-            }
+            // Auto-storlek på rader/kolumner (barnen sätter Width/HeightRequest)
+            for (int r = 0; r < gridSize; r++)
+                BingoGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            for (int c = 0; c < gridSize; c++)
+                BingoGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             for (int i = 0; i < totalItems; i++)
             {
@@ -98,15 +139,24 @@ public partial class BingoBricka : ContentPage
                 int row = i / gridSize;
                 int col = i % gridSize;
 
+                // En fast storleks-container per ruta
+                var tileContainer = new ContentView
+                {
+                    WidthRequest = _tileSize,
+                    HeightRequest = _tileSize,
+                    Padding = 0
+                };
+
+                // Inre grid i varje ruta
                 var tileGrid = new Grid
                 {
                     BackgroundColor = Colors.Purple,
-                    Padding = 4,
+                    Padding = 6,
                     RowDefinitions =
-                {
-                    new RowDefinition { Height = GridLength.Star },
-                    new RowDefinition { Height = GridLength.Auto },
-                }
+                    {
+                        new RowDefinition { Height = GridLength.Star },
+                        new RowDefinition { Height = GridLength.Auto },
+                    }
                 };
 
                 // Titel
@@ -118,7 +168,8 @@ public partial class BingoBricka : ContentPage
                     HorizontalOptions = LayoutOptions.Center,
                     VerticalOptions = LayoutOptions.Center,
                     LineBreakMode = LineBreakMode.WordWrap,
-                    HorizontalTextAlignment = TextAlignment.Center
+                    HorizontalTextAlignment = TextAlignment.Center,
+                    MaxLines = 4
                 };
                 tileGrid.Add(titleLabel, 0, 0);
 
@@ -213,7 +264,7 @@ public partial class BingoBricka : ContentPage
                     tileGrid.Add(dotsGrid, 0, 1);
                 }
 
-                // Tap för hela rutan
+                // Tap på hela rutan
                 var tapGesture = new TapGestureRecognizer();
                 tapGesture.Tapped += async (sender, args) =>
                 {
@@ -225,16 +276,16 @@ public partial class BingoBricka : ContentPage
                 };
                 tileGrid.GestureRecognizers.Add(tapGesture);
 
-                BingoGrid.Add(tileGrid, col, row);
+                tileContainer.Content = tileGrid;
+                BingoGrid.Add(tileContainer, col, row);
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Fel vid generering av bingobricka: {ex.Message}");
-            await Application.Current.MainPage.DisplayAlert("Fel", "Kunde inte bygga bingobrickan.", "OK");
+            await DisplayAlert("Fel", "Kunde inte bygga bingobrickan.", "OK");
         }
     }
-
 
     private async void OnGameSettingsClicked(object sender, EventArgs e)
     {
@@ -258,58 +309,28 @@ public partial class BingoBricka : ContentPage
 
     private double CalculateFontSize(string text)
     {
-        if (text.Length > 30)
-            return 8; // Väldigt lång text
-        else if (text.Length > 20)
-            return 10; // Medellång text
-        else
-            return 12; // Kort text
+        if (string.IsNullOrEmpty(text)) return 12;
+        if (text.Length > 30) return 8;
+        if (text.Length > 20) return 10;
+        return 12;
     }
+
     private async void OnShowLeaderboardClicked(object sender, EventArgs e)
     {
-        // Navigera till LeaderboardPage och skicka med _gameId
         await Navigation.PushAsync(new BingoMaui.Leaderboard(_gameId));
     }
+
     private async void OnToggleCommentsClicked(object sender, EventArgs e)
     {
         await Navigation.PushModalAsync(new CommentModal(_gameId));
     }
-    private void OnPinchUpdated(object sender, PinchGestureUpdatedEventArgs e)
-    {
-        if (e.Status == GestureStatus.Started)
-        {
-            // Starta skalningen
-            _startScale = BingoGrid.Scale;
-            BingoGrid.AnchorX = 0;
-            BingoGrid.AnchorY = 0;
-        }
-        else if (e.Status == GestureStatus.Running)
-        {
-            // Räkna ut ny skalning
-            double currentScale = Math.Max(1, _startScale * e.Scale);
-            BingoGrid.Scale = currentScale;
 
-            // Håll offset inom området
-            var deltaX = (_xOffset - e.ScaleOrigin.X) * (currentScale - 1) * BingoGrid.Width;
-            var deltaY = (_yOffset - e.ScaleOrigin.Y) * (currentScale - 1) * BingoGrid.Height;
-
-            BingoGrid.TranslationX = Math.Min(0, Math.Max(deltaX, -BingoGrid.Width * (currentScale - 1)));
-            BingoGrid.TranslationY = Math.Min(0, Math.Max(deltaY, -BingoGrid.Height * (currentScale - 1)));
-        }
-        else if (e.Status == GestureStatus.Completed)
-        {
-            // Spara offset och skalning
-            _xOffset = BingoGrid.TranslationX;
-            _yOffset = BingoGrid.TranslationY;
-            _currentScale = BingoGrid.Scale;
-        }
-    }
     private async Task ShowAllCompletedPlayers(List<CompletedInfo> completedList)
     {
         string playerNames = string.Join("\n", completedList.Select(c =>
             $"{c.Nickname} ({c.UserColor})"));
 
-        await Application.Current.MainPage.DisplayAlert("Spelare som klarat denna:", playerNames, "OK");
+        await DisplayAlert("Spelare som klarat denna:", playerNames, "OK");
     }
 
 }

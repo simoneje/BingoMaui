@@ -1,34 +1,74 @@
 ﻿using BingoMaui.Services;
-using BingoMaui.Services.Backend;
 using BingoMaui.Services.Backend.RequestModels;
-using Google.Cloud.Firestore;
-using System;
 using System.Collections.ObjectModel;
-using System.Threading.Tasks;
-using static Google.Rpc.Context.AttributeContext.Types;
+
 namespace BingoMaui;
 
 public partial class CreateGame : ContentPage
 {
-    // Tillfällig lista för egna utmaningar i denna session
+    // Egna utmaningar du lägger till i denna vy innan skapande
     private readonly ObservableCollection<BingoCard> _customChallenges = new();
-    private const int BoardSize = 25;
+
+    // Egna “userChallenges” om du har dem sedan tidigare (dictionary-shape)
     private List<Dictionary<string, object>> userChallenges = new();
+
+    // Vald brädstorlek (ändras via Picker). Default 5x5.
+    private int _boardSide = 5;
+    private int DesiredCount => _boardSide * _boardSide;
 
     public CreateGame()
     {
         InitializeComponent();
+
+        // Sätt default 5x5 på pickern om inget valt
+        if (BoardSizePicker != null && BoardSizePicker.SelectedIndex < 0)
+            BoardSizePicker.SelectedIndex = 0; // 5 x 5
+
+        UpdateBoardSizeInfo();
+        UpdateCustomCountLabel();
     }
+
+    // === Picker: uppdatera vald storlek ===
+    private void OnBoardSizeChanged(object sender, EventArgs e)
+    {
+        if (BoardSizePicker?.SelectedItem is string text)
+        {
+            // "7 x 7" → 7
+            var digits = new string(text.TakeWhile(char.IsDigit).ToArray());
+            if (int.TryParse(digits, out var n) && n >= 5 && n <= 10)
+            {
+                _boardSide = n;
+                UpdateBoardSizeInfo();
+                UpdateCustomCountLabel();
+            }
+        }
+    }
+
+    private void UpdateBoardSizeInfo()
+    {
+        if (BoardSizeInfoLabel != null)
+            BoardSizeInfoLabel.Text = $"{DesiredCount} rutor";
+    }
+
+    private void UpdateCustomCountLabel()
+    {
+        if (ChallengeCountLabel != null)
+            ChallengeCountLabel.Text = $"{_customChallenges.Count}/{DesiredCount} egna utmaningar";
+    }
+
+    // === Helpers: konverteringar ===
     private BingoCard ConvertDictionaryToBingoCard(Dictionary<string, object> dict)
     {
         return new BingoCard
         {
-            Title = dict.ContainsKey("Title") ? dict["Title"].ToString() : string.Empty,
-            Description = dict.ContainsKey("Description") ? dict["Description"].ToString() : string.Empty,
-            Category = dict.ContainsKey("Category") ? dict["Category"].ToString() : string.Empty,
-            CardId = dict.ContainsKey("CardId") ? dict["CardId"].ToString() : Guid.NewGuid().ToString() // Skapar ID om det inte finns
+            Title = dict.TryGetValue("Title", out var t) ? t?.ToString() : string.Empty,
+            Description = dict.TryGetValue("Description", out var d) ? d?.ToString() : string.Empty,
+            Category = dict.TryGetValue("Category", out var c) ? c?.ToString() : string.Empty,
+            // CardId kan vara tomt – backend är tolerant och genererar, men vi sätter gärna ett lokalt också
+            CardId = dict.TryGetValue("CardId", out var id) && id != null ? id.ToString() : Guid.NewGuid().ToString()
         };
     }
+
     private List<Challenge> ConvertBingoCardsToChallenges(List<BingoCard> bingoCards)
     {
         return bingoCards.Select(card => new Challenge
@@ -36,34 +76,33 @@ public partial class CreateGame : ContentPage
             Title = card.Title,
             Description = card.Description,
             Category = card.Category,
-            CompletedBy = new List<CompletedInfo>(), // Initiera en tom lista
+            CompletedBy = new List<CompletedInfo>(),
             ChallengeId = card.CardId,
         }).ToList();
     }
 
+    // === Skapa spel ===
     private async void OnCreateGameClicked(object sender, EventArgs e)
     {
-        var combinedChallenges = await GetCombinedChallengesAsync();
+        var combinedChallenges = await GetCombinedChallengesAsync(DesiredCount);
 
-        var challenges = ConvertBingoCardsToChallenges(combinedChallenges);
-        var startDateUtc = StartDatePicker.Date.ToUniversalTime();
-        var endDateUtc = EndDatePicker.Date.ToUniversalTime();
+        // Datum (backend defaultar också, men vi skickar med här)
+        var startDateUtc = DateTime.UtcNow;
+        var endDateUtc = startDateUtc.AddMonths(3);
 
         var userProfile = App.CurrentUserProfile;
-        
 
         var gameRequest = new CreateGameRequest
         {
-            GameName = GameNameEntry.Text,
+            GameName = string.IsNullOrWhiteSpace(GameNameEntry?.Text) ? null : GameNameEntry.Text,
             StartDate = startDateUtc,
             EndDate = endDateUtc,
-            Cards = combinedChallenges,
-            Nickname = userProfile.Nickname,
-            PlayerColor = string.IsNullOrWhiteSpace(userProfile.PlayerColor) ? "#00FFFF" : userProfile.PlayerColor
+            Cards = combinedChallenges, // N*N kort
+            Nickname = userProfile?.Nickname,
+            PlayerColor = string.IsNullOrWhiteSpace(userProfile?.PlayerColor) ? "#00FFFF" : userProfile.PlayerColor
         };
 
         var game = await BackendServices.GameService.CreateGameAsync(gameRequest);
-        AccountServices.SaveGameToCache(game);
 
         if (game == null)
         {
@@ -71,22 +110,25 @@ public partial class CreateGame : ContentPage
             return;
         }
 
+        AccountServices.SaveGameToCache(game);
         App.ShouldRefreshChallenges = true;
 
         await Navigation.PushAsync(new BingoBricka(game.GameId));
-
         await DisplayAlert("Framgång!", $"Spelet {game.GameName} har skapats med Invite Code: {game.InviteCode}", "OK");
     }
 
+    // === (tom knapp-handler om du planerar något senare) ===
     private async void OnUpdateGameStatusClicked(object sender, EventArgs e)
     {
-        
+        await Task.CompletedTask;
     }
+
+    // === Lägg till egen utmaning i denna session ===
     private async void OnAddCustomChallengeClicked(object sender, EventArgs e)
     {
-        if (_customChallenges.Count >= BoardSize)
+        if (_customChallenges.Count >= DesiredCount)
         {
-            await DisplayAlert("Max antal", $"Du kan max ha {BoardSize} rutor.", "OK");
+            await DisplayAlert("Max antal", $"Du kan max ha {DesiredCount} rutor för vald storlek.", "OK");
             return;
         }
 
@@ -95,7 +137,6 @@ public partial class CreateGame : ContentPage
         if (string.IsNullOrWhiteSpace(title)) return;
         title = title.Trim();
 
-        // Enkla valideringar
         if (title.Length > 100)
         {
             await DisplayAlert("För långt", "Titeln bör vara max 100 tecken.", "OK");
@@ -110,7 +151,7 @@ public partial class CreateGame : ContentPage
         var category = await DisplayPromptAsync("Ny utmaning", "Kategori (valfri):", "OK", "Hoppa över");
         category = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
 
-        // Undvik dubbletter på titel (case-insensitivt)
+        // Dubblettvarning på titel (case-insensitiv)
         if (_customChallenges.Any(c => string.Equals(c.Title, title, StringComparison.OrdinalIgnoreCase)))
         {
             var ok = await DisplayAlert("Dubblett", "En utmaning med samma titel finns redan. Lägga ändå?", "Ja", "Nej");
@@ -119,68 +160,73 @@ public partial class CreateGame : ContentPage
 
         _customChallenges.Add(new BingoCard
         {
-            // CardId lämnas tomt – backend genererar
+            CardId = Guid.NewGuid().ToString(), // lokalt id (backend genererar också om saknas)
             Title = title,
             Description = description,
             Category = category,
-            CompletedBy = new List<CompletedInfo>() // bra att initiera
+            CompletedBy = new List<CompletedInfo>()
         });
 
-        // (Valfritt) uppdatera en label i UI med count
-        ChallengeCountLabel.Text = $"{_customChallenges.Count}/{BoardSize} egna utmaningar";
+        UpdateCustomCountLabel();
     }
-    private async Task<List<BingoCard>> GetCombinedChallengesAsync()
+
+    // === Bygg upp till desiredCount: egna → userChallenges → backend → klona ===
+    private async Task<List<BingoCard>> GetCombinedChallengesAsync(int desiredCount)
     {
         var result = new List<BingoCard>();
 
-        // 1) Egna utmaningar först (max 25)
-        var takeCustom = Math.Min(_customChallenges.Count, BoardSize);
-        result.AddRange(_customChallenges.Take(takeCustom));
+        // 1) Egna (lagda via knappen)
+        if (_customChallenges.Count > 0)
+            result.AddRange(_customChallenges);
 
-        // 2) Fyll upp med backend-random tills vi når 25
-        var remaining = BoardSize - result.Count;
-        if (remaining > 0)
+        // 2) Egna gamla (dictionary) om de finns
+        var userCards = userChallenges?
+            .Select(dict => ConvertDictionaryToBingoCard(dict))
+            .ToList() ?? new List<BingoCard>();
+
+        if (userCards.Count > 0)
+            result.AddRange(userCards);
+
+        // 3) Fyll på från backend slump
+        if (result.Count < desiredCount)
         {
-            var backendChallengeService = BackendServices.ChallengeService;
-            var firebaseChallenges = await backendChallengeService.GetRandomChallengesAsync(remaining);
-
-            // Konvertera backendutmaningar till BingoCard (din befintliga converter)
-            var moreCards = firebaseChallenges.Select(ch => Converters.ConvertChallengeToBingoCard(ch));
-
-            result.AddRange(moreCards);
+            var needed = desiredCount - result.Count;
+            var firebaseChallenges = await BackendServices.ChallengeService.GetRandomChallengesAsync(needed);
+            var firebaseCards = firebaseChallenges.Select(ch => Converters.ConvertChallengeToBingoCard(ch));
+            result.AddRange(firebaseCards);
         }
 
-        // Säkerställ att CompletedBy aldrig är null (UI gillar det)
+        // 4) Klona om vi fortfarande saknar
+        if (result.Count == 0)
+            throw new InvalidOperationException("Saknar helt underlag för att skapa rutor.");
+
+        var basePool = result.ToList();
+        int idx = 0;
+        while (result.Count < desiredCount)
+        {
+            var src = basePool[idx % basePool.Count];
+            result.Add(CloneForBoard(src));
+            idx++;
+        }
+
+        // 5) Initiera CompletedBy och säkerställ unikt CardId
         foreach (var c in result)
-            c.CompletedBy ??= new List<CompletedInfo>();
+        {
+            c.CompletedBy = new List<CompletedInfo>();
+            if (string.IsNullOrWhiteSpace(c.CardId))
+                c.CardId = Guid.NewGuid().ToString();
+        }
 
         return result;
     }
 
-    //private async Task<List<BingoCard>> GetCombinedChallengesAsync()
-    //{
-    //    int userChallengeCount = userChallenges.Count;
-    //    List<BingoCard> bingoCards = new();
-
-    //    if (userChallengeCount >= 25)
-    //    {
-    //        bingoCards = userChallenges
-    //            .Take(25)
-    //            .Select(dict => ConvertDictionaryToBingoCard(dict))
-    //            .ToList();
-    //    }
-    //    else
-    //    {
-    //        int neededCount = 25 - userChallengeCount;
-    //        var backendChallengeService = BackendServices.ChallengeService;
-
-    //        var firebaseChallenges = await backendChallengeService.GetRandomChallengesAsync(neededCount);
-
-    //        var userCards = userChallenges.Select(dict => ConvertDictionaryToBingoCard(dict));
-    //        var firebaseCards = firebaseChallenges.Select(ch => Converters.ConvertChallengeToBingoCard(ch));
-
-    //        bingoCards = userCards.Concat(firebaseCards).ToList();
-    //    }
-    //    return bingoCards;
-    //}
+    // Klon med nytt CardId (separat ruta på brädet)
+    private static BingoCard CloneForBoard(BingoCard src) => new BingoCard
+    {
+        CardId = Guid.NewGuid().ToString(),
+        Title = src.Title,
+        Description = src.Description,
+        Category = src.Category,
+        CompletedBy = new List<CompletedInfo>()
+    };
 }

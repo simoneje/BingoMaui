@@ -32,6 +32,25 @@
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
+            <StackLayout Orientation="Horizontal" Spacing="12" Padding="0,6" HorizontalOptions="Center">
+                <Label Text="Storlek:" VerticalTextAlignment="Center" />
+                <Picker x:Name="BoardSizePicker"
+                        WidthRequest="140"
+                        SelectedIndexChanged="OnBoardSizeChanged">
+                    <Picker.Items>
+                        <x:String>5 x 5</x:String>
+                        <x:String>6 x 6</x:String>
+                        <x:String>7 x 7</x:String>
+                        <x:String>8 x 8</x:String>
+                        <x:String>9 x 9</x:String>
+                        <x:String>10 x 10</x:String>
+                    </Picker.Items>
+                </Picker>
+                <Label x:Name="BoardSizeInfoLabel"
+                         Text="25 rutor"
+                         VerticalTextAlignment="Center" />
+            </StackLayout>
+
             <!-- Skapa Bingo-knapp -->
             <Button Text="Skapa Bingo" Clicked="OnCreateGameClicked" />
         </StackLayout>

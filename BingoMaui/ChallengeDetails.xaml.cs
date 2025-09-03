@@ -87,7 +87,7 @@ namespace BingoMaui
                 return;
             }
 
-            var success = await BackendServices.ChallengeService.MarkChallengeAsCompletedAsync(_gameId, _challenge.Title);
+            var success = await BackendServices.ChallengeService.MarkChallengeAsCompletedAsync(_gameId, _challenge.ChallengeId);
             if (!success)
             {
                 await DisplayAlert("Fel", "Det gick inte att markera utmaningen som klarad.", "OK");
@@ -120,7 +120,7 @@ namespace BingoMaui
             var confirm = await DisplayAlert("Bekräfta", "Vill du verkligen ta bort din klarmarkering?", "Ja", "Avbryt");
             if (!confirm) return;
 
-            var success = await BackendServices.ChallengeService.UnmarkChallengeAsCompletedAsync(_gameId, _challenge.Title);
+            var success = await BackendServices.ChallengeService.UnmarkChallengeAsCompletedAsync(_gameId, _challenge.ChallengeId);
 
             if (!success)
             {
