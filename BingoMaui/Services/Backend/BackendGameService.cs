@@ -1,5 +1,6 @@
 ﻿using BingoMaui;
 using BingoMaui.Services.Backend.RequestModels;
+using System;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -10,9 +11,11 @@ public class BackendGameService
 {
     private readonly HttpClient _httpClient;
     private static readonly JsonSerializerOptions _jsonOptions = new()
+
     {
         PropertyNameCaseInsensitive = true
     };
+
 
     public BackendGameService(HttpClient httpClient)
     {
@@ -37,8 +40,9 @@ public class BackendGameService
 
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"❌ Misslyckades med att skapa spel: {response.StatusCode}");
-                await ShowAlert("Kunde inte skapa spel", "Försök igen strax.");
+                var err = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ Misslyckades med att skapa spel: {response.StatusCode} {err}");
+                
                 return null;
             }
 
@@ -60,7 +64,14 @@ public class BackendGameService
         }
     }
 
-    public async Task<BingoGame> JoinGameAsync(string inviteCode, string nickname, string playerColor)
+    public class JoinGameResult
+    {
+        public BingoGame? Game { get; set; }
+        public bool AlreadyInGame { get; set; }
+        public string? InfoMessage { get; set; }
+    }
+
+    public async Task<JoinGameResult?> JoinGameAsyncDetailed(string inviteCode, string nickname, string playerColor)
     {
         var request = new JoinGameRequest
         {
@@ -97,33 +108,37 @@ public class BackendGameService
             return null;
         }
 
-        if (result.Message == "Du är redan med i spelet." && !string.IsNullOrEmpty(result.GameId))
+        // Tolka backend-meddelandet
+        var alreadyIn = !string.IsNullOrWhiteSpace(result.Message) &&
+                        result.Message.IndexOf("redan med", StringComparison.OrdinalIgnoreCase) >= 0;
+
+        // Hämta spelobjekt
+        BingoGame? game = result.Game;
+        if (game == null && !string.IsNullOrWhiteSpace(result.GameId))
         {
-            var cached = AccountServices.LoadGameFromCache(result.GameId);
-            if (cached != null) return cached;
-
-            var fallbackGame = await GetGameByIdAsync(result.GameId);
-            if (fallbackGame != null)
-            {
-                AccountServices.SaveGameToCache(fallbackGame);
-                return fallbackGame;
-            }
-
-            Console.WriteLine("⚠️ Kunde inte hämta spelet trots att vi redan var med.");
-            return null;
+            game = await GetGameByIdAsync(result.GameId);
         }
 
-        // 🧠 Ny: alltid hämta spelet från backend om Game saknas
-        var game = result.Game ?? await GetGameByIdAsync(result.GameId);
         if (game != null)
         {
             AccountServices.SaveGameToCache(game);
-            return game;
         }
 
-        Console.WriteLine("⚠️ Kunde inte hämta spelet efter join.");
-        return null;
+        return new JoinGameResult
+        {
+            Game = game,
+            AlreadyInGame = alreadyIn,
+            InfoMessage = result.Message
+        };
     }
+
+    // Bakåtkompatibel wrapper – om du inte vill ändra alla anropsställen på en gång
+    public async Task<BingoGame?> JoinGameAsync(string inviteCode, string nickname, string playerColor)
+    {
+        var detailed = await JoinGameAsyncDetailed(inviteCode, nickname, playerColor);
+        return detailed?.Game;
+    }
+
 
     public async Task<BingoGame> GetGameByIdAsync(string gameId)
     {

@@ -3,24 +3,45 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-
 namespace BingoMaui.Services
 {
     public class FirebaseAuthService
     {
-        public FirebaseAuthService()
+        public FirebaseAuthService() { }
+        private static bool IsRenderHibernating(HttpResponseMessage resp, out string? routingHeader)
         {
+            routingHeader = null;
+            if (resp == null) return false;
 
+            // Leta efter Render-specifik header
+            if (resp.Headers.TryGetValues("x-render-routing", out var vals))
+            {
+                routingHeader = vals.FirstOrDefault();
+                if (!string.IsNullOrEmpty(routingHeader) &&
+                    routingHeader.Contains("hibernate", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            // Fånga klassiska “sovande/otillgänglig” koder
+            var code = (int)resp.StatusCode;
+            return code == 503 || code == 502 || code == 504;
         }
+
         public string GetLoggedInNickname()
         {
-            if (App.CurrentUserProfile.Nickname == null)
-            {
+            if (App.CurrentUserProfile?.Nickname == null)
                 return "Anonym";
-            }
-            return App.CurrentUserProfile.Nickname; // Default till "Anonym Användare" om inget finns
+            return App.CurrentUserProfile.Nickname;
         }
 
+        // --- Hjälpare: se till att anonyma anrop inte skickar med gammal bearer ---
+        private static void ClearAuthHeaderForAnonymousCall()
+        {
+            // Nolla Authorization så register/login inte bär med en gammal/broken token
+            BackendServices.HttpClient.DefaultRequestHeaders.Authorization = null;
+        }
 
         // Metod för att skapa en ny användare (registrera sig)
         public async Task<string> RegisterUserAsync(string email, string password, string nickname = null)
@@ -40,7 +61,11 @@ namespace BingoMaui.Services
                 var json = JsonSerializer.Serialize(request);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await BackendServices.HttpClient.PostAsync("https://backendbingoapi.onrender.com/api/auth/register", content);
+                // ❗ Viktigt: ta bort Authorization-header innan anonymt anrop
+                ClearAuthHeaderForAnonymousCall();
+
+                var response = await BackendServices.HttpClient.PostAsync(
+                    "https://backendbingoapi.onrender.com/api/auth/register", content);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -52,12 +77,22 @@ namespace BingoMaui.Services
                 var responseJson = await response.Content.ReadAsStringAsync();
                 var result = JsonSerializer.Deserialize<RegisterResponse>(responseJson);
 
+                if (result == null || string.IsNullOrWhiteSpace(result.UserId) || string.IsNullOrWhiteSpace(result.IdToken))
+                    return "Error: Ogiltigt svar vid registrering.";
+
                 // Spara credentials lokalt
                 await SecureStorage.SetAsync("UserId", result.UserId);
                 await SecureStorage.SetAsync("IdToken", result.IdToken);
+                if (!string.IsNullOrWhiteSpace(result.RefreshToken))
+                    await SecureStorage.SetAsync("RefreshToken", result.RefreshToken);
                 await SecureStorage.SetAsync("IsLoggedIn", "true");
 
+                // Sätt bearer för framtida skyddade anrop
                 BackendServices.UpdateToken(result.IdToken);
+
+                // Initiera appens profilobjekt (minst UserId så UI kan använda det direkt)
+                App.CurrentUserProfile ??= new UserProfile();
+                App.CurrentUserProfile.UserId = result.UserId;
 
                 return result.UserId;
             }
@@ -67,7 +102,6 @@ namespace BingoMaui.Services
                 return $"Error: {ex.Message}";
             }
         }
-
 
         // Metod för att logga in en användare (e-post & lösenord)
         public async Task<string> LoginUserAsync(string email, string password)
@@ -83,7 +117,18 @@ namespace BingoMaui.Services
                 var json = JsonSerializer.Serialize(request);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await BackendServices.HttpClient.PostAsync("https://backendbingoapi.onrender.com/api/auth/login", content);
+                // ❗ Viktigt: ta bort Authorization-header innan anonymt anrop
+                ClearAuthHeaderForAnonymousCall();
+
+                var response = await BackendServices.HttpClient.PostAsync(
+                    "https://backendbingoapi.onrender.com/api/auth/login", content);
+
+                // Logga om Render troligen sover
+                if (IsRenderHibernating(response, out var routing))
+                {
+                    Console.WriteLine($"[Render] Backend verkar sova (status {(int)response.StatusCode}). " +
+                                      $"x-render-routing='{routing ?? "<none>"}'. Försök igen om några sekunder.");
+                }
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -95,13 +140,17 @@ namespace BingoMaui.Services
                 var responseJson = await response.Content.ReadAsStringAsync();
                 var result = JsonSerializer.Deserialize<LoginResponse>(responseJson);
 
+                if (result == null || string.IsNullOrWhiteSpace(result.LocalId) || string.IsNullOrWhiteSpace(result.IdToken))
+                    return "Error: Ogiltigt svar vid login.";
+
                 // Spara info lokalt
                 await SecureStorage.SetAsync("UserId", result.LocalId);
                 await SecureStorage.SetAsync("IdToken", result.IdToken);
-                await SecureStorage.SetAsync("RefreshToken", result.RefreshToken);
-
+                if (!string.IsNullOrWhiteSpace(result.RefreshToken))
+                    await SecureStorage.SetAsync("RefreshToken", result.RefreshToken);
                 await SecureStorage.SetAsync("IsLoggedIn", "true");
 
+                // Sätt bearer för framtida skyddade anrop
                 BackendServices.UpdateToken(result.IdToken);
 
                 App.CurrentUserProfile ??= new UserProfile();
@@ -114,6 +163,7 @@ namespace BingoMaui.Services
                 return $"Error logging in: {ex.Message}";
             }
         }
+
         public static async Task<string> RefreshIdTokenAsync(string refreshToken)
         {
             try
@@ -127,8 +177,8 @@ namespace BingoMaui.Services
 
                 var content = new FormUrlEncodedContent(request);
                 var response = await client.PostAsync(
-                $"https://securetoken.googleapis.com/v1/token?key=AIzaSyCuGa8fDtOtjPUc8wQV0kJ1YFi21AY3nr8",
-                content);
+                    $"https://securetoken.googleapis.com/v1/token?key=AIzaSyCuGa8fDtOtjPUc8wQV0kJ1YFi21AY3nr8",
+                    content);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -156,14 +206,16 @@ namespace BingoMaui.Services
 
         public class RegisterResponse
         {
-            [JsonPropertyName("userId")] 
+            [JsonPropertyName("userId")]
             public string UserId { get; set; }
-            [JsonPropertyName("idToken")] 
+
+            [JsonPropertyName("idToken")]
             public string IdToken { get; set; }
-            // Lägg till om din backend returnerar den:
-            [JsonPropertyName("refreshToken")] 
+
+            [JsonPropertyName("refreshToken")]
             public string? RefreshToken { get; set; }
         }
+
         public class RefreshTokenResponse
         {
             [JsonPropertyName("access_token")]

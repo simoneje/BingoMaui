@@ -16,6 +16,9 @@
             <Label Text="Slutdatum" FontSize="18" />
             <DatePicker x:Name="EndDatePicker" />
 
+            <Button Text="Lägg till utmaning" Clicked="OnAddCustomChallengeClicked" />
+            <Label x:Name="ChallengeCountLabel" Text="0/25 egna utmaningar" />
+
             <!-- Lista över spelare -->
             <Label Text="Bjud in spelare" FontSize="18" />
             <CollectionView x:Name="PlayerList" SelectionMode="Multiple">

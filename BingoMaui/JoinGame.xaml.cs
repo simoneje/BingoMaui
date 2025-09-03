@@ -26,22 +26,26 @@ public partial class JoinGame : ContentPage
                 return;
             }
 
-            var game = await BackendServices.GameService.JoinGameAsync(
-                inviteCode,
-                App.CurrentUserProfile.Nickname,
-                App.CurrentUserProfile.PlayerColor
-            );
-            
 
-            if (game == null)
+            var res = await BackendServices.GameService.JoinGameAsyncDetailed(inviteCode, App.CurrentUserProfile.Nickname, App.CurrentUserProfile.PlayerColor);
+
+            if (res == null || res.Game == null)
             {
-                await DisplayAlert("Fel", "Kunde inte gå med i spelet. Koden kan vara ogiltig eller du är redan med.", "OK");
+                await DisplayAlert("Fel", "Kunde inte gå med i spelet.", "OK");
                 return;
             }
 
-            var challenges = Converters.ConvertBingoCardsToChallenges(game.Cards);
-            await DisplayAlert("Success", $"Du har gått med i spelet: {game.GameName}!", "OK");
-            await Navigation.PushAsync(new BingoBricka(game.GameId));
+            if (res.AlreadyInGame)
+            {
+                await DisplayAlert("Info", "Du är redan med i spelet. Vi öppnar det åt dig.", "OK");
+            }
+            else
+            {
+                await DisplayAlert("Klart!", "Du har gått med i spelet!", "OK");
+            }
+
+
+            await Navigation.PushAsync(new BingoBricka(res.Game.GameId));
             App.ShouldRefreshChallenges = true;
         }
         catch (Exception ex)
