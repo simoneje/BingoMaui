@@ -67,6 +67,12 @@ namespace BingoMaui.Services
                 var response = await BackendServices.HttpClient.PostAsync(
                     "https://backendbingoapi.onrender.com/api/auth/register", content);
 
+                if (IsRenderHibernating(response, out var routing))
+                {
+                    Console.WriteLine($"[Render] Backend verkar sova (status {(int)response.StatusCode}). " +
+                                      $"x-render-routing='{routing ?? "<none>"}'. Försök igen om några sekunder.");
+                }
+
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorMsg = await response.Content.ReadAsStringAsync();
