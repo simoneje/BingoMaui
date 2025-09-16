@@ -9,6 +9,8 @@ public partial class BingoBricka : ContentPage
     private string _gameId;
     private List<Challenge> _challenges = new();
     private string _inviteCode = string.Empty;
+    private string _currentUserId;
+
 
     // ---- Layout/scroll parametrar ----
     private const int BaseVisibleCols = 5;   // “så här många kolumner får plats utan scroll” (behåll nuvarande look)
@@ -56,28 +58,30 @@ public partial class BingoBricka : ContentPage
     {
         base.OnAppearing();
 
-        // 1) Läs cache via AccountServices
+        // Hämta aktuell användare (lokalt från SecureStorage via din helper)
+        _currentUserId = await BackendServices.GetUserIdAsync();
+
+        // 1) Rendera snabbt från cache
         var cachedGame = AccountServices.LoadGameFromCache(_gameId);
         if (cachedGame != null)
         {
             _inviteCode = cachedGame.InviteCode;
             _challenges = Converters.ConvertBingoCardsToChallenges(cachedGame.Cards);
             InviteCodeLabel.Text = _inviteCode;
-
             if (_layoutReady) PopulateBingoGrid(_challenges);
         }
 
+        // 2) Hämta färskt från backend
         try
         {
-            // 2) Hämta färskt från backend
             var latestGame = await BackendServices.GameService.GetGameByIdAsync(_gameId);
             if (latestGame != null)
             {
-                // Jämför via CardId (robustare än titel, särskilt med dubbletter)
                 bool shouldRefresh =
                     cachedGame == null ||
                     cachedGame.Cards?.Count != latestGame.Cards?.Count ||
-                    !cachedGame.Cards.Select(c => c.CardId).SequenceEqual(latestGame.Cards.Select(c => c.CardId));
+                    !cachedGame.Cards.Select(c => c.CardId)
+                                     .SequenceEqual(latestGame.Cards.Select(c => c.CardId));
 
                 if (shouldRefresh)
                 {
@@ -88,7 +92,7 @@ public partial class BingoBricka : ContentPage
                 _inviteCode = latestGame.InviteCode;
                 InviteCodeLabel.Text = _inviteCode;
 
-                // 3) Uppdatera cache via AccountServices
+                // 3) Uppdatera cache
                 AccountServices.SaveGameToCache(latestGame);
             }
         }
@@ -97,6 +101,7 @@ public partial class BingoBricka : ContentPage
             Console.WriteLine($"🔌 Fel vid hämtning från backend: {ex.Message}");
         }
     }
+
 
 
     private async void PopulateBingoGrid(List<Challenge> challenges)
@@ -184,7 +189,7 @@ public partial class BingoBricka : ContentPage
                         Padding = 0
                     };
 
-                    var userId = App.CurrentUserProfile?.UserId;
+                    var userId = !string.IsNullOrEmpty(_currentUserId) ? _currentUserId : App.CurrentUserProfile?.UserId;
                     var myCompletion = completions.FirstOrDefault(c => c.PlayerId == userId);
                     int totalCount = completions.Count;
                     bool isMine = myCompletion != null;

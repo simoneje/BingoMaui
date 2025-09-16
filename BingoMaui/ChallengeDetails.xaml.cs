@@ -1,6 +1,8 @@
 ﻿using BingoMaui.Services;
-using BingoMaui;
 using BingoMaui.Services.Backend;
+using System.Linq;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace BingoMaui
 {
@@ -23,38 +25,64 @@ namespace BingoMaui
         protected override async void OnAppearing()
         {
             base.OnAppearing();
-            _currentUserId = await BackendServices.GetUserIdAsync(); // 🔁 Använd SecureStorage-hjälpare om du har den
+
+            // 0) Hämta aktuell användare
+            _currentUserId = await BackendServices.GetUserIdAsync();
+
+
+            // 1) Uppdatera challenge.CompletedBy från senaste kända state
+            await RefreshChallengeFromLatestGame();
+
+            // 2) Ladda spelare som klarat
             await LoadCompletedPlayers();
         }
+
+        private async Task RefreshChallengeFromLatestGame()
+        {
+            // Försök först cache (snabbt), annars backend
+            var game = AccountServices.LoadGameFromCache(_gameId)
+                       ?? await BackendServices.GameService.GetGameByIdAsync(_gameId);
+
+            if (game == null || game.Cards == null) return;
+
+            var all = Converters.ConvertBingoCardsToChallenges(game.Cards);
+
+            // Matcha i första hand på CardId (ChallengeId)
+            var latest = all.FirstOrDefault(c => c.ChallengeId == _challenge.ChallengeId)
+                        // fallback för äldre data om CardId saknades
+                        ?? all.FirstOrDefault(c => string.Equals(c.Title, _challenge.Title, StringComparison.OrdinalIgnoreCase));
+
+            if (latest != null)
+                _challenge.CompletedBy = latest.CompletedBy ?? new List<CompletedInfo>();
+        }
+
         private async Task LoadCompletedPlayers()
         {
             try
             {
                 var playerList = new List<DisplayPlayer>();
 
-                if (_challenge.CompletedBy != null)
+                if (_challenge.CompletedBy != null && _challenge.CompletedBy.Count > 0)
                 {
                     var game = await BackendServices.GameService.GetGameByIdAsync(_gameId);
-
-                    foreach (var entry in _challenge.CompletedBy)
+                    if (game?.PlayerInfo != null)
                     {
-                        if (game.PlayerInfo.TryGetValue(entry.PlayerId, out var stats))
+                        foreach (var entry in _challenge.CompletedBy)
                         {
-                            playerList.Add(new DisplayPlayer
+                            if (game.PlayerInfo.TryGetValue(entry.PlayerId, out var stats) && stats != null)
                             {
-                                Nickname = stats.Nickname,
-                                Color = stats.Color,
-                                PlayerId = entry.PlayerId
-                            });
+                                playerList.Add(new DisplayPlayer
+                                {
+                                    Nickname = stats.Nickname,
+                                    Color = stats.Color,
+                                    PlayerId = entry.PlayerId
+                                });
+                            }
                         }
                     }
+                }
 
-                    CompletedPlayersList.ItemsSource = playerList;
-                }
-                else
-                {
-                    CompletedPlayersList.ItemsSource = null;
-                }
+                CompletedPlayersList.ItemsSource = playerList.Count > 0 ? playerList : null;
             }
             catch (Exception ex)
             {
@@ -69,31 +97,36 @@ namespace BingoMaui
             {
                 await Navigation.PushAsync(new ProfilePublicPage(selected.PlayerId));
             }
-
             ((CollectionView)sender).SelectedItem = null;
         }
 
         private async void OnMarkAsCompletedClicked(object sender, EventArgs e)
         {
+            // Säkerställ färskt state så vi inte dubbelmarkerar i onödan
+            await RefreshChallengeFromLatestGame();
+
             if (_challenge.CompletedBy != null && _challenge.CompletedBy.Any(c => c.PlayerId == _currentUserId))
             {
                 await DisplayAlert("Info", "Du har redan klarat denna utmaning!", "OK");
                 return;
             }
 
-            if (string.IsNullOrEmpty(_gameId) || string.IsNullOrEmpty(_challenge.Title))
+            if (string.IsNullOrEmpty(_gameId) || string.IsNullOrEmpty(_challenge.ChallengeId))
             {
-                await DisplayAlert("Fel", "Kunde inte identifiera spelet eller utmaningen.", "OK");
+                await DisplayAlert("Fel", "Kunde inte identifiera spelet eller kortets CardId.", "OK");
                 return;
             }
 
-            var success = await BackendServices.ChallengeService.MarkChallengeAsCompletedAsync(_gameId, _challenge.ChallengeId);
+            var success = await BackendServices.ChallengeService
+                .MarkChallengeAsCompletedAsync(_gameId, _challenge.ChallengeId);
+
             if (!success)
             {
                 await DisplayAlert("Fel", "Det gick inte att markera utmaningen som klarad.", "OK");
                 return;
             }
 
+            // Hämta uppdaterat spel och uppdatera just denna ruta (CardId-first)
             var updatedGame = await BackendServices.GameService.GetGameByIdAsync(_gameId);
             if (updatedGame == null)
             {
@@ -102,7 +135,8 @@ namespace BingoMaui
             }
 
             var updatedChallenges = Converters.ConvertBingoCardsToChallenges(updatedGame.Cards);
-            var updatedCard = updatedChallenges.FirstOrDefault(c => c.Title == _challenge.Title);
+            var updatedCard = updatedChallenges.FirstOrDefault(c => c.ChallengeId == _challenge.ChallengeId)
+                              ?? updatedChallenges.FirstOrDefault(c => string.Equals(c.Title, _challenge.Title, StringComparison.OrdinalIgnoreCase));
 
             if (updatedCard == null)
             {
@@ -120,7 +154,14 @@ namespace BingoMaui
             var confirm = await DisplayAlert("Bekräfta", "Vill du verkligen ta bort din klarmarkering?", "Ja", "Avbryt");
             if (!confirm) return;
 
-            var success = await BackendServices.ChallengeService.UnmarkChallengeAsCompletedAsync(_gameId, _challenge.ChallengeId);
+            if (string.IsNullOrEmpty(_gameId) || string.IsNullOrEmpty(_challenge.ChallengeId))
+            {
+                await DisplayAlert("Fel", "Kunde inte identifiera spelet eller kortets CardId.", "OK");
+                return;
+            }
+
+            var success = await BackendServices.ChallengeService
+                .UnmarkChallengeAsCompletedAsync(_gameId, _challenge.ChallengeId);
 
             if (!success)
             {
@@ -136,7 +177,8 @@ namespace BingoMaui
             }
 
             var updatedChallenges = Converters.ConvertBingoCardsToChallenges(updatedGame.Cards);
-            var updatedCard = updatedChallenges.FirstOrDefault(c => c.Title == _challenge.Title);
+            var updatedCard = updatedChallenges.FirstOrDefault(c => c.ChallengeId == _challenge.ChallengeId)
+                              ?? updatedChallenges.FirstOrDefault(c => string.Equals(c.Title, _challenge.Title, StringComparison.OrdinalIgnoreCase));
 
             if (updatedCard == null)
             {
