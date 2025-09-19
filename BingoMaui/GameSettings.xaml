@@ -4,39 +4,126 @@
              x:Class="BingoMaui.GameSettings"
              Title="GameSettings">
 
-    <VerticalStackLayout Padding="20" Spacing="16">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
 
-        <!-- Visar vilket spel det handlar om -->
-        <Label x:Name="GameNameLabel" FontSize="24" FontAttributes="Bold" />
+            <!-- Header -->
+            <Label x:Name="GameNameLabel"
+                   FontSize="22"
+                   FontAttributes="Bold" />
 
-        <Label Text="Välj din färg i detta spel:" FontSize="18" />
+            <!-- Färgsektion -->
+            <Frame Padding="12"
+                   HasShadow="False"
+                   BorderColor="#e5e7eb"
+                   CornerRadius="12">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Välj din färg i detta spel:"
+                           FontSize="18"
+                           FontAttributes="Bold" />
 
-        <!-- Färgväljare -->
-        <CollectionView x:Name="ColorPicker"
-                        ItemsLayout="HorizontalList"
-                        SelectionMode="Single"
-                        HeightRequest="80"
-                        SelectionChanged="OnColorSelected">
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <Frame Padding="10"
-                           Margin="5"
-                           CornerRadius="25"
-                           HeightRequest="50"
-                           WidthRequest="50"
-                           HasShadow="True"
-                           BackgroundColor="{Binding}">
-                        <Frame.GestureRecognizers>
-                            <TapGestureRecognizer CommandParameter="{Binding}" Tapped="OnColorTapped" />
-                        </Frame.GestureRecognizers>
-                    </Frame>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+                    <!-- Färgväljare: behåll ItemsLayout via inre nod (ta bort attributet) -->
+                    <CollectionView x:Name="ColorPicker"
+                                    SelectionMode="Single"
+                                    HeightRequest="80"
+                                    SelectionChanged="OnColorSelected">
+                        <CollectionView.ItemsLayout>
+                            <LinearItemsLayout Orientation="Horizontal" ItemSpacing="10" />
+                        </CollectionView.ItemsLayout>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Frame Padding="10"
+                                       Margin="5"
+                                       CornerRadius="25"
+                                       HeightRequest="50"
+                                       WidthRequest="50"
+                                       HasShadow="True"
+                                       BackgroundColor="{Binding}">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer CommandParameter="{Binding}"
+                                                              Tapped="OnColorTapped" />
+                                    </Frame.GestureRecognizers>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
 
-        <Button Text="Spara"
-                Clicked="OnSaveClicked"
-                BackgroundColor="Green"
-                TextColor="White" />
-    </VerticalStackLayout>
+                    <Button Text="Spara färg"
+                            Clicked="OnSaveClicked"
+                            BackgroundColor="#10b981"
+                            TextColor="White" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Danger zone: visas bara för Host (IsVisible sätts i code-behind) -->
+            <Frame x:Name="DangerZone"
+                   IsVisible="False"
+                   Padding="12"
+                   HasShadow="False"
+                   BorderColor="#fecaca"
+                   BackgroundColor="#fff1f2"
+                   CornerRadius="12">
+                <VerticalStackLayout Spacing="14">
+
+                    <!-- ADMIN: Kicka spelare -->
+                    <Label Text="Admin: Kicka spelare"
+                           FontAttributes="Bold"
+                           TextColor="#b91c1c" />
+
+                    <CollectionView x:Name="PlayersList" ItemsLayout="VerticalList" HeightRequest="220">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="*,Auto" Padding="6">
+                                    <Label Text="{Binding Nickname}" VerticalTextAlignment="Center" />
+                                    <Button Text="Kicka"
+                                            Grid.Column="1"
+                                            Clicked="OnKickPlayerClicked"
+                                            CommandParameter="{Binding PlayerId}"
+                                            BackgroundColor="#ef4444"
+                                            TextColor="White" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <HorizontalStackLayout Spacing="12">
+                        <CheckBox x:Name="RemoveProgressCheck" IsChecked="True" />
+                        <Label Text="Ta bort spelarens progress" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+
+                    <HorizontalStackLayout Spacing="12">
+                        <CheckBox x:Name="RemoveCommentsCheck" IsChecked="False" />
+                        <Label Text="Rensa spelarens kommentarer/reaktioner" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+
+                    <BoxView HeightRequest="1" BackgroundColor="#fecaca" />
+
+                    <!-- DELETE-Sektion -->
+                    <Label Text="Ta bort spelet"
+                           FontAttributes="Bold"
+                           TextColor="#b91c1c" />
+                    <Label Text="Att ta bort spelet är permanent och går inte att ångra." />
+
+                    <Label Text="Skriv 'delete' för att bekräfta:"
+                           FontAttributes="Italic"
+                           TextColor="#7f1d1d" />
+
+                    <Entry x:Name="DeleteConfirmEntry"
+                            Placeholder="delete"
+                            TextChanged="OnDeleteConfirmTextChanged"
+                            MaxLength="20" />
+
+                    <Button x:Name="DeleteGameButton"
+                            Text="Ta bort spelet"
+                            IsEnabled="False"
+                            Clicked="OnDeleteGameClicked"
+                            BackgroundColor="#dc2626"
+                            TextColor="White" />
+
+                </VerticalStackLayout>
+            </Frame>
+
+
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>

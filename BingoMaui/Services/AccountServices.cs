@@ -81,6 +81,11 @@ namespace BingoMaui.Services
             }
         }
 
+        public static void RemoveGameFromCache(string gameId)
+        {
+            var key = "cached_game_" + gameId;
+            if (Preferences.ContainsKey(key)) Preferences.Remove(key);
+        }
 
         // --- Interna hjälpmetoder ---
         private static void UpsertIndex(string gameId)

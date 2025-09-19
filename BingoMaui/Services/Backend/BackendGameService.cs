@@ -71,6 +71,46 @@ public class BackendGameService
         public string? InfoMessage { get; set; }
     }
 
+    public async Task<bool> DeleteGameAsync(string gameId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"https://backendbingoapi.onrender.com/api/games/{gameId}");
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                    Application.Current.MainPage.DisplayAlert("Session utgången", "Logga in igen.", "OK"));
+                await AccountServices.LogoutAsync();
+                return false;
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                    Application.Current.MainPage.DisplayAlert("Ej behörig", "Endast spelvärden kan ta bort spelet.", "OK"));
+                return false;
+            }
+
+            if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NoContent)
+            {
+                Console.WriteLine($"❌ DeleteGame misslyckades: {response.StatusCode}");
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                    Application.Current.MainPage.DisplayAlert("Fel", "Kunde inte ta bort spelet.", "OK"));
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Fel i DeleteGameAsync: {ex.Message}");
+            await MainThread.InvokeOnMainThreadAsync(() =>
+                Application.Current.MainPage.DisplayAlert("Fel", "Nätverksfel vid borttagning.", "OK"));
+            return false;
+        }
+    }
+
     public async Task<JoinGameResult?> JoinGameAsyncDetailed(string inviteCode, string nickname, string playerColor)
     {
         var request = new JoinGameRequest
@@ -234,6 +274,60 @@ public class BackendGameService
             await ShowAlert("Fel", "Kunde inte ändra färg just nu.");
             return false;
         }
+    }
+    public async Task<bool> KickPlayerAsync(string gameId, string targetUserId, bool removeProgress = true, bool removeComments = false)
+    {
+        try
+        {
+            var payload = new
+            {
+                TargetUserId = targetUserId,
+                RemoveProgress = removeProgress,
+                RemoveComments = removeComments
+            };
+            var json = System.Text.Json.JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var resp = await _httpClient.PostAsync($"https://backendbingoapi.onrender.com/api/games/{gameId}/kick", content);
+
+            if (resp.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                    Application.Current.MainPage.DisplayAlert("Session utgången", "Logga in igen.", "OK"));
+                await AccountServices.LogoutAsync();
+                return false;
+            }
+            if (resp.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                    Application.Current.MainPage.DisplayAlert("Ej behörig", "Endast värden kan kicka spelare.", "OK"));
+                return false;
+            }
+            if (!resp.IsSuccessStatusCode && resp.StatusCode != System.Net.HttpStatusCode.NoContent)
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ Kick failed: {resp.StatusCode} {err}");
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                    Application.Current.MainPage.DisplayAlert("Fel", "Det gick inte att kicka spelaren.", "OK"));
+                return false;
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ KickPlayerAsync error: {ex.Message}");
+            await MainThread.InvokeOnMainThreadAsync(() =>
+                Application.Current.MainPage.DisplayAlert("Fel", "Nätverksfel vid kick.", "OK"));
+            return false;
+        }
+    }
+    public static void ApplyKickLocally(BingoGame game, string targetUserId, bool removeProgress)
+    {
+        game.PlayerIds?.RemoveAll(x => x == targetUserId);
+        game.PlayerInfo?.Remove(targetUserId);
+        if (removeProgress && game.Cards != null)
+            foreach (var c in game.Cards)
+                c?.CompletedBy?.RemoveAll(ci => ci.PlayerId == targetUserId);
     }
 
     public class JoinGameResponse
